@@ -1,0 +1,67 @@
+// Schema Prisma per Carrozzeria Motta - PRODUZIONE
+// Database PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums
+enum UserRole {
+  admin
+  employee
+}
+
+enum StatoOrdine {
+  in_attesa
+  in_corso
+  completato
+  consegnato
+  annullato
+}
+
+enum Priorita {
+  bassa
+  media
+  alta
+}
+
+enum StatoPreventivo {
+  bozza
+  inviato
+  accettato
+  rifiutato
+  scaduto
+}
+
+enum StatoFattura {
+  bozza
+  emessa
+  pagata
+  scaduta
+  annullata
+}
+
+// Modelli
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nome      String
+  cognome   String
+  telefono  String?
+  ruolo     UserRole @default(employee)
+  attivo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relazioni
+  ordini DipendentiOrdini[]
+
+  @@map("users")
+}
