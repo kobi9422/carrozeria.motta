@@ -1,0 +1,254 @@
+// Schema Prisma per Carrozzeria Motta
+// Database SQLite locale
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  admin
+  employee
+}
+
+enum StatoOrdine {
+  in_attesa
+  in_corso
+  completato
+  consegnato
+  annullato
+}
+
+enum Priorita {
+  bassa
+  media
+  alta
+}
+
+enum StatoPreventivo {
+  bozza
+  inviato
+  accettato
+  rifiutato
+  scaduto
+}
+
+enum StatoFattura {
+  bozza
+  emessa
+  pagata
+  scaduta
+  annullata
+}
+
+// Modelli
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nome      String
+  cognome   String
+  telefono  String?
+  ruolo     UserRole @default(employee)
+  attivo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relazioni
+  ordini DipendentiOrdini[]
+
+  @@map("users")
+}
+
+model Cliente {
+  id               String   @id @default(cuid())
+  nome             String
+  cognome          String
+  telefono         String?
+  email            String?  @unique
+  indirizzo        String?
+  citta            String?
+  cap              String?
+  provincia        String?
+  codiceFiscale    String?  @map("codice_fiscale")
+  partitaIva       String?  @map("partita_iva")
+  note             String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relazioni
+  veicoli      Veicolo[]
+  ordiniLavoro OrdineLavoro[]
+  preventivi   Preventivo[]
+  fatture      Fattura[]
+
+  @@map("clienti")
+}
+
+model Veicolo {
+  id           String   @id @default(cuid())
+  clienteId    String   @map("cliente_id")
+  marca        String
+  modello      String
+  anno         Int?
+  targa        String   @unique
+  telaio       String?
+  colore       String?
+  carburante   String?
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relazioni
+  cliente      Cliente        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  ordiniLavoro OrdineLavoro[]
+
+  @@map("veicoli")
+}
+
+model OrdineLavoro {
+  id                  String      @id @default(cuid())
+  numeroOrdine        String      @unique @map("numero_ordine")
+  clienteId           String      @map("cliente_id")
+  veicoloId           String?     @map("veicolo_id")
+  descrizione         String
+  stato               StatoOrdine @default(in_attesa)
+  priorita            Priorita    @default(media)
+  dataInizio          DateTime    @map("data_inizio")
+  dataFine            DateTime?   @map("data_fine")
+  costoStimato        Float       @default(0) @map("costo_stimato")
+  tempoLavorato       Int         @default(0) @map("tempo_lavorato")
+  note                String?
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  // Relazioni
+  cliente    Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  veicolo    Veicolo?             @relation(fields: [veicoloId], references: [id], onDelete: SetNull)
+  dipendenti DipendentiOrdini[]
+
+  @@map("ordini_lavoro")
+}
+
+// Tabella di relazione many-to-many tra dipendenti e ordini
+model DipendentiOrdini {
+  id              String       @id @default(cuid())
+  dipendenteId    String       @map("dipendente_id")
+  ordineLavoroId  String       @map("ordine_lavoro_id")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  // Relazioni
+  dipendente     User          @relation(fields: [dipendenteId], references: [id], onDelete: Cascade)
+  ordineLavoro   OrdineLavoro  @relation(fields: [ordineLavoroId], references: [id], onDelete: Cascade)
+
+  @@unique([dipendenteId, ordineLavoroId])
+  @@map("dipendenti_ordini")
+}
+
+model Preventivo {
+  id              String           @id @default(cuid())
+  numeroPreventivo String          @unique @map("numero_preventivo")
+  clienteId       String           @map("cliente_id")
+  titolo          String
+  descrizione     String?
+  stato           StatoPreventivo  @default(bozza)
+  dataCreazione   DateTime         @default(now()) @map("data_creazione")
+  dataScadenza    DateTime?        @map("data_scadenza")
+  importoTotale   Float            @default(0) @map("importo_totale")
+  note            String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relazioni
+  cliente Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  voci    VocePreventivo[]
+
+  @@map("preventivi")
+}
+
+model VocePreventivo {
+  id           String     @id @default(cuid())
+  preventivoId String     @map("preventivo_id")
+  descrizione  String
+  quantita     Float      @default(1)
+  prezzoUnitario Float    @map("prezzo_unitario")
+  totale       Float
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relazioni
+  preventivo Preventivo @relation(fields: [preventivoId], references: [id], onDelete: Cascade)
+
+  @@map("voci_preventivo")
+}
+
+model Fattura {
+  id              String       @id @default(cuid())
+  numeroFattura   String       @unique @map("numero_fattura")
+  clienteId       String       @map("cliente_id")
+  dataEmissione   DateTime     @default(now()) @map("data_emissione")
+  dataScadenza    DateTime     @map("data_scadenza")
+  dataPagamento   DateTime?    @map("data_pagamento")
+  stato           StatoFattura @default(bozza)
+  importoTotale   Float        @default(0) @map("importo_totale")
+  note            String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relazioni
+  cliente Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  voci    VoceFattura[]
+
+  @@map("fatture")
+}
+
+model VoceFattura {
+  id             String   @id @default(cuid())
+  fatturaId      String   @map("fattura_id")
+  descrizione    String
+  quantita       Float    @default(1)
+  prezzoUnitario Float    @map("prezzo_unitario")
+  totale         Float
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relazioni
+  fattura Fattura @relation(fields: [fatturaId], references: [id], onDelete: Cascade)
+
+  @@map("voci_fattura")
+}
+
+model Impostazioni {
+  id                      String   @id @default(cuid())
+  // Dati Azienda
+  nomeAzienda             String   @default("Carrozzeria Motta") @map("nome_azienda")
+  indirizzo               String   @default("")
+  citta                   String   @default("")
+  cap                     String   @default("")
+  provincia               String   @default("")
+  telefono                String   @default("")
+  email                   String   @default("")
+  partitaIva              String   @default("") @map("partita_iva")
+  codiceFiscale           String   @default("") @map("codice_fiscale")
+
+  // Configurazione Fatture
+  iban                    String   @default("")
+  banca                   String   @default("")
+  condizioniPagamento     String   @default("Pagamento a 30 giorni") @map("condizioni_pagamento")
+  noteLegaliFattura       String   @default("") @map("note_legali_fattura")
+
+  // Configurazione Preventivi
+  validitaPreventivi      Int      @default(30) @map("validita_preventivi") // giorni
+  noteStandardPreventivo  String   @default("") @map("note_standard_preventivo")
+
+  // Metadata
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("impostazioni")
+}
