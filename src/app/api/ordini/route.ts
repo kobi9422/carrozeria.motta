@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 import { toCamelCase } from '@/lib/supabase-helpers';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET - Lista tutti gli ordini
 export async function GET(request: NextRequest) {
   try {
+    // Verifica autenticazione
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    }
+
     // Recupera ordini con relazioni
     const { data: ordini, error } = await supabaseServer
       .from('ordini_lavoro')

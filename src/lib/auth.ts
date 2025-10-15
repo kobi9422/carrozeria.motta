@@ -87,9 +87,19 @@ export async function signUpWithEmail(
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  // Questa funzione sarà chiamata dal client, quindi non possiamo accedere al token qui
-  // Il token sarà gestito dal middleware o dalle API routes
-  return null;
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return null;
+    }
+
+    return getUserFromToken(token);
+  } catch (error) {
+    return null;
+  }
 }
 
 export async function getUserFromToken(token: string): Promise<User | null> {

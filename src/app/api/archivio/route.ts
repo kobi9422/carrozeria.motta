@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     // Verifica autenticazione
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    const token = cookieStore.get('auth-token')?.value;
 
     if (!token) {
       return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });

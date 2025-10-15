@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET /api/fatture - Ottieni tutte le fatture
 export async function GET(request: NextRequest) {
   try {
+    // Verifica autenticazione
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const stato = searchParams.get('stato');
 
