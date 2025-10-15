@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 import { toCamelCase } from '@/lib/supabase-helpers';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 
 // GET - Ottieni tutti gli elementi archiviati
 export async function GET(request: NextRequest) {
   try {
+    // Verifica autenticazione
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
+    }
+
+    try {
+      jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (error) {
+      return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const tipo = searchParams.get('tipo'); // 'ordini' | 'preventivi' | 'fatture' | null (tutti)
     const clienteId = searchParams.get('clienteId');
