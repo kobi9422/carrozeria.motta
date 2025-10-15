@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminLayout from '@/components/AdminLayout';
-import { 
-  ArchiveBoxIcon, 
-  ArrowPathIcon,
-  FunnelIcon,
-  MagnifyingGlassIcon,
-  DocumentTextIcon,
-  ClipboardDocumentListIcon,
-  BanknotesIcon
-} from '@heroicons/react/24/outline';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import {
+  Archive,
+  RefreshCw,
+  Filter,
+  Search,
+  FileText,
+  ClipboardList,
+  Banknote
+} from 'lucide-react';
 
 type TabType = 'ordini' | 'preventivi' | 'fatture';
 
@@ -133,13 +133,13 @@ export default function ArchivioPage() {
   };
 
   return (
-    <AdminLayout>
+    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <ArchiveBoxIcon className="h-8 w-8 text-blue-600" />
+              <Archive className="h-8 w-8 text-blue-600" />
               Archivio
             </h1>
             <p className="text-gray-600 mt-1">Visualizza e gestisci i lavori archiviati</p>
@@ -149,7 +149,7 @@ export default function ArchivioPage() {
         {/* Filtri */}
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-2 mb-4">
-            <FunnelIcon className="h-5 w-5 text-gray-400" />
+            <Filter className="h-5 w-5 text-gray-400" />
             <h3 className="font-semibold text-gray-900">Filtri</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -180,7 +180,7 @@ export default function ArchivioPage() {
                 Cerca
               </label>
               <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Cliente, numero..."
@@ -213,7 +213,7 @@ export default function ArchivioPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <ClipboardDocumentListIcon className="h-5 w-5" />
+                <ClipboardList className="h-5 w-5" />
                 Ordini ({archivio.ordini?.length || 0})
               </button>
               <button
@@ -224,7 +224,7 @@ export default function ArchivioPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <DocumentTextIcon className="h-5 w-5" />
+                <FileText className="h-5 w-5" />
                 Preventivi ({archivio.preventivi?.length || 0})
               </button>
               <button
@@ -235,7 +235,7 @@ export default function ArchivioPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <BanknotesIcon className="h-5 w-5" />
+                <Banknote className="h-5 w-5" />
                 Fatture ({archivio.fatture?.length || 0})
               </button>
             </nav>
@@ -250,7 +250,7 @@ export default function ArchivioPage() {
               </div>
             ) : filteredData().length === 0 ? (
               <div className="text-center py-12">
-                <ArchiveBoxIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <Archive className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500">Nessun elemento archiviato</p>
               </div>
             ) : (
@@ -319,7 +319,7 @@ export default function ArchivioPage() {
                             onClick={() => handleRipristina(activeTab, item.id)}
                             className="text-blue-600 hover:text-blue-900 flex items-center gap-1 ml-auto"
                           >
-                            <ArrowPathIcon className="h-4 w-4" />
+                            <RefreshCw className="h-4 w-4" />
                             Ripristina
                           </button>
                         </td>
@@ -341,7 +341,7 @@ export default function ArchivioPage() {
           {toast.message}
         </div>
       )}
-    </AdminLayout>
+    </DashboardLayout>
   );
 }
 
