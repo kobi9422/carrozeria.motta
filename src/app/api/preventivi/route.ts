@@ -45,10 +45,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('POST /api/preventivi - Body ricevuto:', JSON.stringify(body, null, 2));
     const { clienteId, titolo, descrizione, dataScadenza, voci, note } = body;
 
     // Validazione
     if (!clienteId || !titolo || !voci || voci.length === 0) {
+      console.error('Validazione fallita:', { clienteId, titolo, voci });
       return NextResponse.json(
         { error: 'Cliente, titolo e almeno una voce sono obbligatori' },
         { status: 400 }
@@ -137,7 +139,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(toCamelCase(preventivoCompleto), { status: 201 });
   } catch (error: any) {
     console.error('Errore POST /api/preventivi:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Stack trace:', error.stack);
+    return NextResponse.json({ error: error.message || 'Errore interno del server' }, { status: 500 });
   }
 }
 
