@@ -45,6 +45,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       description: 'Panoramica generale'
     },
     {
+      name: 'Dashboard Live',
+      href: '/admin/dashboard-live',
+      icon: BarChart3,
+      description: 'Monitoraggio in tempo reale'
+    },
+    {
       name: 'Clienti',
       href: '/admin/clienti',
       icon: Users,
