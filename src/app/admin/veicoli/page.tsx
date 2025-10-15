@@ -26,6 +26,7 @@ interface Veicolo {
 
 export default function VeicoliPage() {
   const [veicoli, setVeicoli] = useState<Veicolo[]>([]);
+  const [clienti, setClienti] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -46,7 +47,20 @@ export default function VeicoliPage() {
 
   useEffect(() => {
     fetchVeicoli();
+    fetchClienti();
   }, []);
+
+  const fetchClienti = async () => {
+    try {
+      const res = await fetch('/api/clienti');
+      if (res.ok) {
+        const data = await res.json();
+        setClienti(data);
+      }
+    } catch (error) {
+      console.error('Errore caricamento clienti:', error);
+    }
+  };
 
   const fetchVeicoli = async () => {
     try {
@@ -324,6 +338,22 @@ export default function VeicoliPage() {
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                <select
+                  required
+                  value={formData.clienteId}
+                  onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Seleziona un cliente --</option>
+                  {clienti.map(cliente => (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.nome} {cliente.cognome} {cliente.email ? `(${cliente.email})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Marca *</label>
                 <input

@@ -46,47 +46,72 @@ interface OrdineRecente {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Statistica>({
-    ordiniAttivi: 12,
-    ordiniInScadenza: 3,
-    ordiniCompletatiMese: 45,
-    fatturatoMese: 15420,
-    fatturatoMeseScorso: 13200,
-    preventiviInAttesa: 5,
-    preventiviApprovati: 8,
-    clientiTotali: 248,
-    nuoviClientiMese: 12,
-    fattureNonPagate: 3
+    ordiniAttivi: 0,
+    ordiniInScadenza: 0,
+    ordiniCompletatiMese: 0,
+    fatturatoMese: 0,
+    fatturatoMeseScorso: 0,
+    preventiviInAttesa: 0,
+    preventiviApprovati: 0,
+    clientiTotali: 0,
+    nuoviClientiMese: 0,
+    fattureNonPagate: 0
   });
+  const [loading, setLoading] = useState(true);
 
-  const [ordiniRecenti, setOrdiniRecenti] = useState<OrdineRecente[]>([
-    {
-      id: '1',
-      numero: 'ORD-2025-001',
-      cliente: 'Mario Rossi',
-      veicolo: 'Fiat Panda',
-      stato: 'in_corso',
-      priorita: 'alta',
-      dataScadenza: '2025-01-15'
-    },
-    {
-      id: '2',
-      numero: 'ORD-2025-002',
-      cliente: 'Laura Bianchi',
-      veicolo: 'VW Golf',
-      stato: 'in_attesa',
-      priorita: 'media',
-      dataScadenza: '2025-01-16'
-    },
-    {
-      id: '3',
-      numero: 'ORD-2025-003',
-      cliente: 'Giuseppe Verdi',
-      veicolo: 'BMW Serie 3',
-      stato: 'in_corso',
-      priorita: 'alta',
-      dataScadenza: '2025-01-14'
+  useEffect(() => {
+    fetchStats();
+    fetchOrdiniRecenti();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/dashboard/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setStats({
+          ordiniAttivi: data.ordiniAttivi || 0,
+          ordiniInScadenza: 0, // TODO: aggiungere all'API
+          ordiniCompletatiMese: data.ordiniCompletatiMese || 0,
+          fatturatoMese: data.fatturatoMese || 0,
+          fatturatoMeseScorso: 0, // TODO: aggiungere all'API
+          preventiviInAttesa: data.preventiviInAttesa || 0,
+          preventiviApprovati: 0, // TODO: aggiungere all'API
+          clientiTotali: data.clientiTotali || 0,
+          nuoviClientiMese: 0, // TODO: aggiungere all'API
+          fattureNonPagate: data.fattureScadute || 0
+        });
+      }
+    } catch (error) {
+      console.error('Errore caricamento statistiche:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const fetchOrdiniRecenti = async () => {
+    try {
+      const res = await fetch('/api/ordini?limit=5');
+      if (res.ok) {
+        const data = await res.json();
+        const ordini = data.ordini || data;
+        setOrdiniRecenti(ordini.slice(0, 5).map((ordine: any) => ({
+          id: ordine.id,
+          numero: ordine.numeroOrdine,
+          cliente: `${ordine.cliente?.nome || ''} ${ordine.cliente?.cognome || ''}`.trim(),
+          veicolo: `${ordine.veicolo?.marca || ''} ${ordine.veicolo?.modello || ''}`.trim(),
+          stato: ordine.stato === 'in_lavorazione' ? 'in_corso' : ordine.stato,
+          priorita: ordine.priorita,
+          dataScadenza: ordine.dataFine
+        })));
+      }
+    } catch (error) {
+      console.error('Errore caricamento ordini recenti:', error);
+    }
+  };
+
+  const [ordiniRecenti, setOrdiniRecenti] = useState<OrdineRecente[]>([]);
 
   // Calcola variazione fatturato
   const variazionePercentuale = ((stats.fatturatoMese - stats.fatturatoMeseScorso) / stats.fatturatoMeseScorso * 100).toFixed(1);

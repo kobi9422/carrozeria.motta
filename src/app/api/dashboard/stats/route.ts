@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       // Statistiche per admin
       
       // Ordini di lavoro attivi
-      const { count: ordiniAttivi, error: ordiniAttiviError } = await supabaseServerServer
+      const { count: ordiniAttivi, error: ordiniAttiviError } = await supabaseServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .in('stato', ['in_attesa', 'in_lavorazione']);
