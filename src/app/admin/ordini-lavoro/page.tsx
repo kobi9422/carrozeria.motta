@@ -133,38 +133,61 @@ export default function OrdiniLavoroPage() {
     setShowAssignModal(true);
   };
 
-  const handleAssignDipendenti = () => {
+  const handleAssignDipendenti = async () => {
     if (!selectedOrdine) return;
 
-    setOrdini(prev => prev.map(ordine =>
-      ordine.id === selectedOrdine.id
-        ? { ...ordine, dipendentiAssegnati: selectedDipendenti }
-        : ordine
-    ));
+    try {
+      setLoading(true);
 
-    const numDipendenti = selectedDipendenti.length;
-    const dipendentiNomi = selectedDipendenti
-      .map(id => {
-        const dip = dipendenti.find(d => d.id === id);
-        return dip ? `${dip.nome} ${dip.cognome}` : '';
-      })
-      .filter(Boolean)
-      .join(', ');
+      // Chiama API per aggiornare dipendenti assegnati
+      const res = await fetch(`/api/ordini/${selectedOrdine.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dipendentiIds: selectedDipendenti
+        })
+      });
 
-    if (numDipendenti === 0) {
+      if (!res.ok) {
+        throw new Error('Errore nell\'assegnazione dipendenti');
+      }
+
+      const ordineAggiornato = await res.json();
+
+      // Aggiorna stato locale
+      setOrdini(prev => prev.map(ordine =>
+        ordine.id === selectedOrdine.id
+          ? { ...ordine, dipendentiAssegnati: selectedDipendenti }
+          : ordine
+      ));
+
+      const numDipendenti = selectedDipendenti.length;
+
+      if (numDipendenti === 0) {
+        setToast({
+          message: `Dipendenti rimossi dall'ordine ${selectedOrdine.numeroOrdine}`,
+          type: 'success'
+        });
+      } else {
+        setToast({
+          message: `${numDipendenti} dipendente${numDipendenti > 1 ? 'i' : ''} assegnato${numDipendenti > 1 ? 'i' : ''} all'ordine ${selectedOrdine.numeroOrdine}`,
+          type: 'success'
+        });
+      }
+
+      setShowAssignModal(false);
+      setSelectedOrdine(null);
+
+      // Ricarica ordini per avere dati aggiornati
+      fetchOrdini();
+    } catch (error: any) {
       setToast({
-        message: `Dipendenti rimossi dall'ordine ${selectedOrdine.numeroOrdine}`,
-        type: 'success'
+        message: error.message || 'Errore nell\'assegnazione dipendenti',
+        type: 'error'
       });
-    } else {
-      setToast({
-        message: `${numDipendenti} dipendente${numDipendenti > 1 ? 'i' : ''} assegnato${numDipendenti > 1 ? 'i' : ''} all'ordine ${selectedOrdine.numeroOrdine}`,
-        type: 'success'
-      });
+    } finally {
+      setLoading(false);
     }
-
-    setShowAssignModal(false);
-    setSelectedOrdine(null);
   };
 
   const toggleDipendente = (dipendenteId: string) => {
