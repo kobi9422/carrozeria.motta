@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Modal } from '@/components/Modal';
 import { Toast } from '@/components/Toast';
@@ -14,7 +14,8 @@ interface Dipendente {
   telefono?: string;
   ruolo: 'admin' | 'employee';
   attivo: boolean;
-  ordiniAssegnati: number;
+  costoOrario?: number;
+  ordiniAssegnati?: number;
   createdAt: string;
 }
 
@@ -22,52 +23,8 @@ export default function DipendentiPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingDipendente, setEditingDipendente] = useState<Dipendente | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
-  const [dipendenti, setDipendenti] = useState<Dipendente[]>([
-    {
-      id: '1',
-      nome: 'Admin',
-      cognome: 'Carrozzeria Motta',
-      email: 'admin@carrozzeriamotta.it',
-      telefono: '+39 123 456 7890',
-      ruolo: 'admin',
-      attivo: true,
-      ordiniAssegnati: 0,
-      createdAt: '2025-01-01'
-    },
-    {
-      id: '2',
-      nome: 'Mario',
-      cognome: 'Rossi',
-      email: 'dipendente@carrozzeriamotta.it',
-      telefono: '+39 098 765 4321',
-      ruolo: 'employee',
-      attivo: true,
-      ordiniAssegnati: 2,
-      createdAt: '2025-01-01'
-    },
-    {
-      id: '3',
-      nome: 'Luigi',
-      cognome: 'Bianchi',
-      email: 'luigi.bianchi@carrozzeriamotta.it',
-      telefono: '+39 111 222 3333',
-      ruolo: 'employee',
-      attivo: true,
-      ordiniAssegnati: 1,
-      createdAt: '2025-01-05'
-    },
-    {
-      id: '4',
-      nome: 'Giuseppe',
-      cognome: 'Verdi',
-      email: 'giuseppe.verdi@carrozzeriamotta.it',
-      telefono: '+39 444 555 6666',
-      ruolo: 'employee',
-      attivo: false,
-      ordiniAssegnati: 0,
-      createdAt: '2024-12-15'
-    }
-  ]);
+  const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroRuolo, setFiltroRuolo] = useState('tutti');
@@ -77,8 +34,30 @@ export default function DipendentiPage() {
     email: '',
     telefono: '',
     password: '',
-    ruolo: 'employee' as 'admin' | 'employee'
+    ruolo: 'employee' as 'admin' | 'employee',
+    costoOrario: ''
   });
+
+  // Carica dipendenti dall'API
+  useEffect(() => {
+    fetchDipendenti();
+  }, []);
+
+  const fetchDipendenti = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/dipendenti');
+      if (!res.ok) {
+        throw new Error('Errore nel caricamento dipendenti');
+      }
+      const data = await res.json();
+      setDipendenti(data);
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenModal = (dipendente?: Dipendente) => {
     if (dipendente) {
@@ -89,7 +68,8 @@ export default function DipendentiPage() {
         email: dipendente.email,
         telefono: dipendente.telefono || '',
         password: '',
-        ruolo: dipendente.ruolo
+        ruolo: dipendente.ruolo,
+        costoOrario: dipendente.costoOrario?.toString() || ''
       });
     } else {
       setEditingDipendente(null);
@@ -99,43 +79,84 @@ export default function DipendentiPage() {
         email: '',
         telefono: '',
         password: '',
-        ruolo: 'employee'
+        ruolo: 'employee',
+        costoOrario: ''
       });
     }
     setShowModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingDipendente) {
-      // Modifica dipendente esistente
-      setDipendenti(prev => prev.map(dip =>
-        dip.id === editingDipendente.id
-          ? { ...dip, ...formData, ordiniAssegnati: dip.ordiniAssegnati }
-          : dip
-      ));
-      setToast({ message: 'Dipendente modificato con successo!', type: 'success' });
-    } else {
-      // Crea nuovo dipendente
-      const newDipendente: Dipendente = {
-        id: String(Date.now()),
-        ...formData,
-        attivo: true,
-        ordiniAssegnati: 0,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setDipendenti(prev => [...prev, newDipendente]);
-      setToast({ message: 'Dipendente creato con successo!', type: 'success' });
-    }
+    try {
+      setLoading(true);
 
-    setShowModal(false);
-    setEditingDipendente(null);
+      if (editingDipendente) {
+        // Modifica dipendente esistente
+        const res = await fetch(`/api/dipendenti/${editingDipendente.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: formData.nome,
+            cognome: formData.cognome,
+            email: formData.email,
+            telefono: formData.telefono || null,
+            ruolo: formData.ruolo,
+            costoOrario: formData.costoOrario ? parseFloat(formData.costoOrario) : 0,
+            ...(formData.password && { password: formData.password })
+          })
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nella modifica del dipendente');
+        }
+
+        setToast({ message: 'Dipendente modificato con successo!', type: 'success' });
+      } else {
+        // Crea nuovo dipendente
+        if (!formData.password) {
+          setToast({ message: 'La password è obbligatoria per nuovi dipendenti', type: 'error' });
+          return;
+        }
+
+        const res = await fetch('/api/dipendenti', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: formData.nome,
+            cognome: formData.cognome,
+            email: formData.email,
+            telefono: formData.telefono || null,
+            password: formData.password,
+            ruolo: formData.ruolo,
+            costoOrario: formData.costoOrario ? parseFloat(formData.costoOrario) : 0
+          })
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nella creazione del dipendente');
+        }
+
+        setToast({ message: 'Dipendente creato con successo!', type: 'success' });
+      }
+
+      // Ricarica lista dipendenti
+      await fetchDipendenti();
+      setShowModal(false);
+      setEditingDipendente(null);
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const dipendente = dipendenti.find(d => d.id === id);
-    if (dipendente && dipendente.ordiniAssegnati > 0) {
+    if (dipendente && (dipendente.ordiniAssegnati || 0) > 0) {
       setToast({
         message: `Impossibile eliminare: ${dipendente.nome} ha ${dipendente.ordiniAssegnati} ordini assegnati`,
         type: 'error'
@@ -144,20 +165,56 @@ export default function DipendentiPage() {
     }
 
     if (confirm('Sei sicuro di voler eliminare questo dipendente?')) {
-      setDipendenti(prev => prev.filter(d => d.id !== id));
-      setToast({ message: 'Dipendente eliminato con successo!', type: 'success' });
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/dipendenti/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nell\'eliminazione del dipendente');
+        }
+
+        await fetchDipendenti();
+        setToast({ message: 'Dipendente eliminato con successo!', type: 'success' });
+      } catch (error: any) {
+        setToast({ message: error.message, type: 'error' });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const toggleAttivo = (id: string) => {
-    setDipendenti(prev => prev.map(dip =>
-      dip.id === id ? { ...dip, attivo: !dip.attivo } : dip
-    ));
+  const toggleAttivo = async (id: string) => {
     const dipendente = dipendenti.find(d => d.id === id);
-    setToast({
-      message: `Dipendente ${dipendente?.attivo ? 'disattivato' : 'attivato'} con successo!`,
-      type: 'success'
-    });
+    if (!dipendente) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/dipendenti/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attivo: !dipendente.attivo
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Errore nell\'aggiornamento dello stato');
+      }
+
+      await fetchDipendenti();
+      setToast({
+        message: `Dipendente ${dipendente.attivo ? 'disattivato' : 'attivato'} con successo!`,
+        type: 'success'
+      });
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredDipendenti = dipendenti.filter(dip => {
@@ -277,8 +334,8 @@ export default function DipendentiPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Utente</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ruolo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Costo/h</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ordini Assegnati</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
                 </tr>
               </thead>
@@ -315,24 +372,24 @@ export default function DipendentiPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        dipendente.ruolo === 'admin' 
-                          ? 'bg-purple-100 text-purple-800' 
+                        dipendente.ruolo === 'admin'
+                          ? 'bg-purple-100 text-purple-800'
                           : 'bg-blue-100 text-blue-800'
                       }`}>
                         {dipendente.ruolo === 'admin' ? 'Amministratore' : 'Dipendente'}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {dipendente.costoOrario ? `€${dipendente.costoOrario.toFixed(2)}/h` : '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        dipendente.attivo 
-                          ? 'bg-green-100 text-green-800' 
+                        dipendente.attivo
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
                         {dipendente.attivo ? 'Attivo' : 'Disattivato'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {dipendente.ordiniAssegnati}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
@@ -448,24 +505,43 @@ export default function DipendentiPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Shield className="w-4 h-4 inline mr-1" />
-                  Ruolo *
-                </label>
-                <select
-                  value={formData.ruolo}
-                  onChange={(e) => setFormData({ ...formData, ruolo: e.target.value as 'admin' | 'employee' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="employee">Dipendente</option>
-                  <option value="admin">Amministratore</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {formData.ruolo === 'admin'
-                    ? '⚠️ Avrà accesso completo al sistema'
-                    : 'Potrà visualizzare solo gli ordini assegnati'}
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Shield className="w-4 h-4 inline mr-1" />
+                    Ruolo *
+                  </label>
+                  <select
+                    value={formData.ruolo}
+                    onChange={(e) => setFormData({ ...formData, ruolo: e.target.value as 'admin' | 'employee' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="employee">Dipendente</option>
+                    <option value="admin">Amministratore</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.ruolo === 'admin'
+                      ? '⚠️ Accesso completo'
+                      : 'Solo ordini assegnati'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    💰 Costo Orario (€/h)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.costoOrario}
+                    onChange={(e) => setFormData({ ...formData, costoOrario: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="25.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Per calcolo costi lavoro
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -474,14 +550,16 @@ export default function DipendentiPage() {
                 type="button"
                 onClick={() => { setShowModal(false); setEditingDipendente(null); }}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                disabled={loading}
               >
                 Annulla
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={loading}
               >
-                {editingDipendente ? 'Salva Modifiche' : 'Crea Dipendente'}
+                {loading ? 'Salvataggio...' : (editingDipendente ? 'Salva Modifiche' : 'Crea Dipendente')}
               </button>
             </div>
           </form>
