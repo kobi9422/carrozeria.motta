@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Modal } from '@/components/Modal';
 import { Toast } from '@/components/Toast';
@@ -25,42 +25,14 @@ interface Veicolo {
 }
 
 export default function VeicoliPage() {
-  const [veicoli, setVeicoli] = useState<Veicolo[]>([
-    {
-      id: '1',
-      clienteId: '1',
-      cliente: { nome: 'Mario', cognome: 'Rossi' },
-      marca: 'Fiat',
-      modello: 'Punto',
-      targa: 'AB123CD',
-      anno: 2018,
-      colore: 'Bianco',
-      numeroTelaio: 'ZFA31200000123456',
-      cilindrata: '1200',
-      alimentazione: 'Benzina',
-      note: 'Veicolo in buone condizioni'
-    },
-    {
-      id: '2',
-      clienteId: '2',
-      cliente: { nome: 'Laura', cognome: 'Bianchi' },
-      marca: 'Volkswagen',
-      modello: 'Golf',
-      targa: 'XY789ZW',
-      anno: 2020,
-      colore: 'Nero',
-      numeroTelaio: 'WVWZZZ1KZBW123456',
-      cilindrata: '1600',
-      alimentazione: 'Diesel',
-      note: null
-    }
-  ]);
-
+  const [veicoli, setVeicoli] = useState<Veicolo[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedVeicolo, setSelectedVeicolo] = useState<Veicolo | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const [formData, setFormData] = useState({
+    clienteId: '',
     marca: '',
     modello: '',
     targa: '',
@@ -72,6 +44,29 @@ export default function VeicoliPage() {
     note: ''
   });
 
+  useEffect(() => {
+    fetchVeicoli();
+  }, []);
+
+  const fetchVeicoli = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/veicoli');
+
+      if (!res.ok) {
+        throw new Error('Errore nel caricamento dei veicoli');
+      }
+
+      const data = await res.json();
+      setVeicoli(data);
+    } catch (error: any) {
+      console.error('Errore nel caricamento veicoli:', error);
+      setToast({ message: error.message || 'Errore nel caricamento', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredVeicoli = veicoli.filter(veicolo =>
     veicolo.targa.toLowerCase().includes(searchTerm.toLowerCase()) ||
     `${veicolo.marca} ${veicolo.modello}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,6 +77,7 @@ export default function VeicoliPage() {
     if (veicolo) {
       setSelectedVeicolo(veicolo);
       setFormData({
+        clienteId: veicolo.clienteId,
         marca: veicolo.marca,
         modello: veicolo.modello,
         targa: veicolo.targa,
@@ -95,6 +91,7 @@ export default function VeicoliPage() {
     } else {
       setSelectedVeicolo(null);
       setFormData({
+        clienteId: '',
         marca: '',
         modello: '',
         targa: '',
@@ -109,34 +106,72 @@ export default function VeicoliPage() {
     setShowModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (selectedVeicolo) {
-      setVeicoli(veicoli.map(v => 
-        v.id === selectedVeicolo.id 
-          ? { ...v, ...formData }
-          : v
-      ));
-      setToast({ message: 'Veicolo modificato con successo!', type: 'success' });
-    } else {
-      const nuovoVeicolo: Veicolo = {
-        id: Date.now().toString(),
-        clienteId: '1',
-        cliente: { nome: 'Mario', cognome: 'Rossi' },
-        ...formData
-      };
-      setVeicoli([...veicoli, nuovoVeicolo]);
-      setToast({ message: 'Veicolo creato con successo!', type: 'success' });
+
+    try {
+      setLoading(true);
+
+      if (selectedVeicolo) {
+        // Modifica veicolo esistente
+        const res = await fetch(`/api/veicoli/${selectedVeicolo.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nella modifica del veicolo');
+        }
+
+        setToast({ message: 'Veicolo modificato con successo!', type: 'success' });
+      } else {
+        // Crea nuovo veicolo
+        const res = await fetch('/api/veicoli', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nella creazione del veicolo');
+        }
+
+        setToast({ message: 'Veicolo creato con successo!', type: 'success' });
+      }
+
+      // Ricarica lista veicoli
+      await fetchVeicoli();
+      setShowModal(false);
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
     }
-    
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questo veicolo?')) {
-      setVeicoli(veicoli.filter(v => v.id !== id));
-      setToast({ message: 'Veicolo eliminato con successo!', type: 'success' });
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/veicoli/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nell\'eliminazione del veicolo');
+        }
+
+        await fetchVeicoli();
+        setToast({ message: 'Veicolo eliminato con successo!', type: 'success' });
+      } catch (error: any) {
+        setToast({ message: error.message, type: 'error' });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

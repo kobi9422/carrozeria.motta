@@ -48,40 +48,17 @@ export default function ClientiPage() {
   const fetchClienti = async () => {
     try {
       setLoading(true);
-      // Per ora usiamo dati mock, poi integreremo con l'API
-      const mockClienti: Cliente[] = [
-        {
-          id: '1',
-          nome: 'Mario',
-          cognome: 'Rossi',
-          telefono: '+39 123 456 7890',
-          email: 'mario.rossi@email.com',
-          indirizzo: 'Via Roma 123',
-          citta: 'Milano',
-          cap: '20100',
-          codiceFiscale: 'RSSMRA80A01F205X',
-          partitaIva: null,
-          note: 'Cliente affidabile',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          nome: 'Laura',
-          cognome: 'Bianchi',
-          telefono: '+39 098 765 4321',
-          email: 'laura.bianchi@email.com',
-          indirizzo: 'Via Verdi 45',
-          citta: 'Roma',
-          cap: '00100',
-          codiceFiscale: 'BNCLRA85M50H501Z',
-          partitaIva: '12345678901',
-          note: 'Azienda con flotta veicoli',
-          createdAt: new Date().toISOString()
-        }
-      ];
-      setClienti(mockClienti);
-    } catch (error) {
+      const res = await fetch('/api/clienti');
+
+      if (!res.ok) {
+        throw new Error('Errore nel caricamento dei clienti');
+      }
+
+      const data = await res.json();
+      setClienti(data);
+    } catch (error: any) {
       console.error('Errore nel caricamento clienti:', error);
+      setToast({ message: error.message || 'Errore nel caricamento', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -139,29 +116,50 @@ export default function ClientiPage() {
     setSelectedCliente(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (selectedCliente) {
-      // Modifica cliente esistente
-      setClienti(clienti.map(c =>
-        c.id === selectedCliente.id
-          ? { ...c, ...formData }
-          : c
-      ));
-      setToast({ message: 'Cliente modificato con successo!', type: 'success' });
-    } else {
-      // Crea nuovo cliente
-      const nuovoCliente: Cliente = {
-        id: Date.now().toString(),
-        ...formData,
-        createdAt: new Date().toISOString()
-      };
-      setClienti([...clienti, nuovoCliente]);
-      setToast({ message: 'Cliente creato con successo!', type: 'success' });
-    }
+    try {
+      setLoading(true);
 
-    handleCloseModal();
+      if (selectedCliente) {
+        // Modifica cliente esistente
+        const res = await fetch(`/api/clienti/${selectedCliente.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nella modifica del cliente');
+        }
+
+        setToast({ message: 'Cliente modificato con successo!', type: 'success' });
+      } else {
+        // Crea nuovo cliente
+        const res = await fetch('/api/clienti', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Errore nella creazione del cliente');
+        }
+
+        setToast({ message: 'Cliente creato con successo!', type: 'success' });
+      }
+
+      // Ricarica lista clienti
+      await fetchClienti();
+      handleCloseModal();
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
