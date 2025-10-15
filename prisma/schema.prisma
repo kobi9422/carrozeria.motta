@@ -1,13 +1,14 @@
 // Schema Prisma per Carrozzeria Motta
-// Database SQLite locale
+// Database PostgreSQL (Supabase per produzione, locale per sviluppo)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // Enums

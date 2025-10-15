@@ -1,0 +1,25 @@
+# Vercel Environment Variables - Carrozzeria Motta
+# Importa questo file su Vercel Dashboard per configurare tutte le variabili
+
+# Database PostgreSQL (Supabase)
+DATABASE_URL=postgresql://postgres:Kaddoclank1@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres:Kaddoclank1@db.jnyxmgiethfesfkyknga.supabase.co:5432/postgres
+
+# JWT Secret per autenticazione
+JWT_SECRET=carrozzeria_motta_jwt_secret_key_2025_production_secure
+
+# Configurazione Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://jnyxmgiethfesfkyknga.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_HUxfnpmp3DM8UsZLVywVVw_3d_9fptI
+
+# Next.js Configuration
+NEXTAUTH_URL=https://carrozzeria-motta.vercel.app
+NEXTAUTH_SECRET=carrozzeria_motta_nextauth_secret_production_2025
+
+# Application Configuration
+NEXT_PUBLIC_APP_NAME=Carrozzeria Motta - Sistema di Gestione
+NEXT_PUBLIC_APP_VERSION=1.0.0
+
+# Node Environment
+NODE_ENV=production
+
