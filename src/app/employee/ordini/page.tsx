@@ -73,20 +73,46 @@ export default function OrdiniDipendentePage() {
       }
       const data = await res.json();
 
-      // Mostra TUTTI gli ordini (nessun filtro per dipendente)
-      setOrdini(data.map((ordine: any) => ({
-        id: ordine.id,
-        numeroOrdine: ordine.numeroOrdine,
-        cliente: ordine.cliente,
-        veicolo: ordine.veicolo,
-        descrizione: ordine.descrizione,
-        stato: ordine.stato,
-        priorita: ordine.priorita,
-        dataInizio: ordine.dataInizio,
-        dataFine: ordine.dataFine,
-        tempoLavorato: ordine.tempoLavorato || 0,
-        timerAttivo: false
-      })));
+      // Per ogni ordine, verifica se c'è un timer attivo
+      const ordiniConTimer = await Promise.all(
+        data.map(async (ordine: any) => {
+          try {
+            const timerRes = await fetch(`/api/ordini/${ordine.id}/timer`);
+            const timerData = await timerRes.json();
+
+            return {
+              id: ordine.id,
+              numeroOrdine: ordine.numeroOrdine,
+              cliente: ordine.cliente,
+              veicolo: ordine.veicolo,
+              descrizione: ordine.descrizione,
+              stato: ordine.stato,
+              priorita: ordine.priorita,
+              dataInizio: ordine.dataInizio,
+              dataFine: ordine.dataFine,
+              tempoLavorato: ordine.tempoLavorato || 0,
+              timerAttivo: timerData.timerAttivo || false,
+              timerInizio: timerData.timerAttivo ? new Date(timerData.sessione.startTime).getTime() : undefined
+            };
+          } catch {
+            return {
+              id: ordine.id,
+              numeroOrdine: ordine.numeroOrdine,
+              cliente: ordine.cliente,
+              veicolo: ordine.veicolo,
+              descrizione: ordine.descrizione,
+              stato: ordine.stato,
+              priorita: ordine.priorita,
+              dataInizio: ordine.dataInizio,
+              dataFine: ordine.dataFine,
+              tempoLavorato: ordine.tempoLavorato || 0,
+              timerAttivo: false
+            };
+          }
+        })
+      );
+
+      setOrdini(ordiniConTimer);
     } catch (error: any) {
       setToast({ message: error.message, type: 'error' });
     } finally {
@@ -122,36 +148,100 @@ export default function OrdiniDipendentePage() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const avviaTimer = (ordineId: string) => {
-    setOrdini(prevOrdini =>
-      prevOrdini.map(ordine =>
-        ordine.id === ordineId
-          ? { ...ordine, timerAttivo: true, timerInizio: Date.now(), stato: 'in_corso' as const }
-          : ordine
-      )
-    );
+  const avviaTimer = async (ordineId: string) => {
+    try {
+      const res = await fetch(`/api/ordini/${ordineId}/timer`, {
+        method: 'POST'
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore avvio timer');
+      }
+
+      const data = await res.json();
+
+      setOrdini(prevOrdini =>
+        prevOrdini.map(ordine =>
+          ordine.id === ordineId
+            ? { ...ordine, timerAttivo: true, timerInizio: Date.now(), stato: 'in_corso' as const }
+            : ordine
+        )
+      );
+
+      setToast({ message: 'Timer avviato!', type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    }
   };
 
-  const pausaTimer = (ordineId: string) => {
-    setOrdini(prevOrdini =>
-      prevOrdini.map(ordine =>
-        ordine.id === ordineId
-          ? { ...ordine, timerAttivo: false }
-          : ordine
-      )
-    );
+  const pausaTimer = async (ordineId: string) => {
+    try {
+      const res = await fetch(`/api/ordini/${ordineId}/timer`, {
+        method: 'PATCH'
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore stop timer');
+      }
+
+      const data = await res.json();
+
+      setOrdini(prevOrdini =>
+        prevOrdini.map(ordine =>
+          ordine.id === ordineId
+            ? { ...ordine, timerAttivo: false }
+            : ordine
+        )
+      );
+
+      setToast({
+        message: `Timer fermato! ${data.riepilogo.durationHours}h - €${data.riepilogo.costoTotale.toFixed(2)}`,
+        type: 'success'
+      });
+      setTimeout(() => setToast(null), 5000);
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    }
   };
 
-  const completaOrdine = (ordineId: string) => {
-    setOrdini(prevOrdini =>
-      prevOrdini.map(ordine =>
-        ordine.id === ordineId
-          ? { ...ordine, stato: 'completato' as const, timerAttivo: false }
-          : ordine
-      )
-    );
-    setToast({ message: 'Ordine completato con successo!', type: 'success' });
-    setTimeout(() => setToast(null), 3000);
+  const completaOrdine = async (ordineId: string) => {
+    try {
+      // Prima ferma il timer se attivo
+      const ordine = ordini.find(o => o.id === ordineId);
+      if (ordine?.timerAttivo) {
+        await pausaTimer(ordineId);
+      }
+
+      // Poi aggiorna lo stato dell'ordine
+      const res = await fetch(`/api/ordini/${ordineId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stato: 'completato' })
+      });
+
+      if (!res.ok) {
+        throw new Error('Errore completamento ordine');
+      }
+
+      setOrdini(prevOrdini =>
+        prevOrdini.map(o =>
+          o.id === ordineId
+            ? { ...o, stato: 'completato' as const, timerAttivo: false }
+            : o
+        )
+      );
+
+      setToast({ message: 'Ordine completato con successo!', type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    }
   };
 
   const filteredOrdini = ordini.filter(ordine => {
