@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         ),
         voci:voci_preventivo (*)
       `)
+      .eq('archiviato', false) // Escludi preventivi archiviati
       .order('data_creazione', { ascending: false });
 
     if (stato && stato !== 'tutti') {

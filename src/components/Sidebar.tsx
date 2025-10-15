@@ -17,7 +17,8 @@ import {
   X,
   LogOut,
   Home,
-  UserCog
+  UserCog,
+  Archive
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -85,6 +86,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       href: '/admin/dipendenti',
       icon: UserCog,
       description: 'Gestione dipendenti'
+    },
+    {
+      name: 'Archivio',
+      href: '/admin/archivio',
+      icon: Archive,
+      description: 'Lavori archiviati'
     },
     {
       name: 'Statistiche',

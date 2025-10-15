@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         ),
         voci:voci_fattura (*)
       `)
+      .eq('archiviato', false) // Escludi fatture archiviate
       .order('data_emissione', { ascending: false });
 
     if (stato && stato !== 'tutti') {

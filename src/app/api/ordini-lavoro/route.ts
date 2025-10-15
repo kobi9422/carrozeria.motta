@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
           nome,
           cognome
         )
-      `, { count: 'exact' });
+      `, { count: 'exact' })
+      .eq('archiviato', false); // Escludi ordini archiviati
 
     // Se l'utente è un dipendente, mostra solo i suoi ordini
     if (user.ruolo === 'employee') {
