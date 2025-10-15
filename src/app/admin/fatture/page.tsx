@@ -516,7 +516,6 @@ export default function FatturePage() {
           </button>
         </div>
       )}
-      </div>
     </DashboardLayout>
   );
 }

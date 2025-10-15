@@ -534,7 +534,6 @@ export default function PreventiviPage() {
           </button>
         </div>
       )}
-      </div>
     </DashboardLayout>
   );
 }
