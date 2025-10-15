@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/fatture - Ottieni tutte le fatture
 export async function GET(request: NextRequest) {
@@ -7,33 +8,35 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const stato = searchParams.get('stato');
 
-    const where: any = {};
+    let query = supabaseServer
+      .from('fatture')
+      .select(`
+        *,
+        cliente:clienti!fatture_cliente_id_fkey (
+          id,
+          nome,
+          cognome,
+          email,
+          telefono,
+          partita_iva,
+          codice_fiscale
+        ),
+        voci:voci_fattura (*)
+      `)
+      .order('data_emissione', { ascending: false });
+
     if (stato && stato !== 'tutti') {
-      where.stato = stato;
+      query = query.eq('stato', stato);
     }
 
-    const fatture = await prisma.fattura.findMany({
-      where,
-      include: {
-        cliente: {
-          select: {
-            id: true,
-            nome: true,
-            cognome: true,
-            email: true,
-            telefono: true,
-            partitaIva: true,
-            codiceFiscale: true
-          }
-        },
-        voci: true
-      },
-      orderBy: {
-        dataEmissione: 'desc'
-      }
-    });
+    const { data: fatture, error } = await query;
 
-    return NextResponse.json(fatture);
+    if (error) {
+      console.error('Errore Supabase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(toCamelCase(fatture || []));
   } catch (error: any) {
     console.error('Errore GET /api/fatture:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -61,20 +64,16 @@ export async function POST(request: NextRequest) {
 
     // Genera numero fattura
     const anno = new Date().getFullYear();
-    const ultimaFattura = await prisma.fattura.findFirst({
-      where: {
-        numeroFattura: {
-          startsWith: `FATT-${anno}-`
-        }
-      },
-      orderBy: {
-        numeroFattura: 'desc'
-      }
-    });
+    const { data: ultimeFatture } = await supabaseServer
+      .from('fatture')
+      .select('numero_fattura')
+      .like('numero_fattura', `FATT-${anno}-%`)
+      .order('numero_fattura', { ascending: false })
+      .limit(1);
 
     let numeroProgressivo = 1;
-    if (ultimaFattura) {
-      const match = ultimaFattura.numeroFattura.match(/FATT-\d{4}-(\d+)/);
+    if (ultimeFatture && ultimeFatture.length > 0) {
+      const match = ultimeFatture[0].numero_fattura.match(/FATT-\d{4}-(\d+)/);
       if (match) {
         numeroProgressivo = parseInt(match[1]) + 1;
       }
@@ -82,30 +81,55 @@ export async function POST(request: NextRequest) {
 
     const numeroFattura = `FATT-${anno}-${numeroProgressivo.toString().padStart(3, '0')}`;
 
-    // Crea fattura con voci
-    const fattura = await prisma.fattura.create({
-      data: {
-        numeroFattura,
-        clienteId,
-        dataScadenza: new Date(dataScadenza),
-        importoTotale,
+    // Crea fattura
+    const { data: fattura, error: fattError } = await supabaseServer
+      .from('fatture')
+      .insert({
+        numero_fattura: numeroFattura,
+        cliente_id: clienteId,
+        data_scadenza: dataScadenza,
+        importo_totale: importoTotale,
         note: note || null,
-        voci: {
-          create: voci.map((voce: any) => ({
-            descrizione: voce.descrizione,
-            quantita: voce.quantita,
-            prezzoUnitario: voce.prezzoUnitario,
-            totale: voce.quantita * voce.prezzoUnitario
-          }))
-        }
-      },
-      include: {
-        cliente: true,
-        voci: true
-      }
-    });
+        stato: 'emessa'
+      })
+      .select()
+      .single();
 
-    return NextResponse.json(fattura, { status: 201 });
+    if (fattError || !fattura) {
+      console.error('Errore creazione fattura:', fattError);
+      return NextResponse.json({ error: fattError?.message || 'Errore creazione fattura' }, { status: 500 });
+    }
+
+    // Crea voci fattura
+    const vociData = voci.map((voce: any) => ({
+      fattura_id: fattura.id,
+      descrizione: voce.descrizione,
+      quantita: voce.quantita,
+      prezzo_unitario: voce.prezzoUnitario,
+      totale: voce.quantita * voce.prezzoUnitario
+    }));
+
+    const { error: vociError } = await supabaseServer
+      .from('voci_fattura')
+      .insert(vociData);
+
+    if (vociError) {
+      console.error('Errore creazione voci:', vociError);
+      return NextResponse.json({ error: vociError.message }, { status: 500 });
+    }
+
+    // Recupera fattura completa
+    const { data: fatturaCompleta } = await supabaseServer
+      .from('fatture')
+      .select(`
+        *,
+        cliente:clienti!fatture_cliente_id_fkey (*),
+        voci:voci_fattura (*)
+      `)
+      .eq('id', fattura.id)
+      .single();
+
+    return NextResponse.json(toCamelCase(fatturaCompleta), { status: 201 });
   } catch (error: any) {
     console.error('Errore POST /api/fatture:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

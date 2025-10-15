@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(toCamelCase(preventivi));
+    return NextResponse.json(toCamelCase(preventivi || []));
   } catch (error: any) {
     console.error('Errore GET /api/preventivi:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -95,9 +95,9 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (prevError) {
+    if (prevError || !preventivo) {
       console.error('Errore creazione preventivo:', prevError);
-      return NextResponse.json({ error: prevError.message }, { status: 500 });
+      return NextResponse.json({ error: prevError?.message || 'Errore creazione preventivo' }, { status: 500 });
     }
 
     // Crea voci preventivo
