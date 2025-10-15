@@ -74,7 +74,22 @@ export default function OrdiniLavoroPage() {
   const [clienteMode, setClienteMode] = useState<'select' | 'new'>('select');
   const [formData, setFormData] = useState({
     clienteId: '',
-    nuovoCliente: { nome: '', cognome: '', email: '', telefono: '' },
+    nuovoCliente: {
+      nome: '',
+      cognome: '',
+      email: '',
+      telefono: '',
+      tipoCliente: 'privato',
+      partitaIva: '',
+      codiceFiscale: '',
+      sdi: '',
+      codiceUnivoco: '',
+      fotoUrl: '',
+      indirizzo: '',
+      citta: '',
+      cap: '',
+      provincia: ''
+    },
     descrizione: '',
     priorita: 'media',
     dataInizio: new Date().toISOString().split('T')[0],
@@ -229,7 +244,22 @@ export default function OrdiniLavoroPage() {
       setFormData({
         ...formData,
         clienteId: nuovoCliente.id,
-        nuovoCliente: { nome: '', cognome: '', email: '', telefono: '' }
+        nuovoCliente: {
+          nome: '',
+          cognome: '',
+          email: '',
+          telefono: '',
+          tipoCliente: 'privato',
+          partitaIva: '',
+          codiceFiscale: '',
+          sdi: '',
+          codiceUnivoco: '',
+          fotoUrl: '',
+          indirizzo: '',
+          citta: '',
+          cap: '',
+          provincia: ''
+        }
       });
 
       setToast({ message: `Cliente ${nuovoCliente.nome} ${nuovoCliente.cognome} creato con successo!`, type: 'success' });
@@ -283,7 +313,22 @@ export default function OrdiniLavoroPage() {
       // Reset form
       setFormData({
         clienteId: '',
-        nuovoCliente: { nome: '', cognome: '', email: '', telefono: '' },
+        nuovoCliente: {
+          nome: '',
+          cognome: '',
+          email: '',
+          telefono: '',
+          tipoCliente: 'privato',
+          partitaIva: '',
+          codiceFiscale: '',
+          sdi: '',
+          codiceUnivoco: '',
+          fotoUrl: '',
+          indirizzo: '',
+          citta: '',
+          cap: '',
+          provincia: ''
+        },
         descrizione: '',
         priorita: 'media',
         dataInizio: new Date().toISOString().split('T')[0],
@@ -647,6 +692,17 @@ export default function OrdiniLavoroPage() {
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Cliente *</label>
+                      <select
+                        value={formData.nuovoCliente.tipoCliente}
+                        onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, tipoCliente: e.target.value } })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="privato">👤 Privato</option>
+                        <option value="societa">🏢 Società</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                       <input
                         type="email"
@@ -664,6 +720,101 @@ export default function OrdiniLavoroPage() {
                         onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, telefono: e.target.value } })}
                         className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="333 1234567"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {formData.nuovoCliente.tipoCliente === 'societa' ? 'Partita IVA' : 'Codice Fiscale'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nuovoCliente.tipoCliente === 'societa' ? formData.nuovoCliente.partitaIva : formData.nuovoCliente.codiceFiscale}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nuovoCliente: {
+                            ...formData.nuovoCliente,
+                            [formData.nuovoCliente.tipoCliente === 'societa' ? 'partitaIva' : 'codiceFiscale']: e.target.value
+                          }
+                        })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder={formData.nuovoCliente.tipoCliente === 'societa' ? '12345678901' : 'RSSMRA80A01H501U'}
+                      />
+                    </div>
+                    {formData.nuovoCliente.tipoCliente === 'societa' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">SDI (Codice Destinatario)</label>
+                          <input
+                            type="text"
+                            value={formData.nuovoCliente.sdi}
+                            onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, sdi: e.target.value } })}
+                            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="ABCDEFG"
+                            maxLength={7}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Codice Univoco (PEC)</label>
+                          <input
+                            type="text"
+                            value={formData.nuovoCliente.codiceUnivoco}
+                            onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, codiceUnivoco: e.target.value } })}
+                            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="0000000"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
+                      <input
+                        type="text"
+                        value={formData.nuovoCliente.indirizzo}
+                        onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, indirizzo: e.target.value } })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Via Roma 123"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Città</label>
+                      <input
+                        type="text"
+                        value={formData.nuovoCliente.citta}
+                        onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, citta: e.target.value } })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Milano"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
+                      <input
+                        type="text"
+                        value={formData.nuovoCliente.cap}
+                        onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, cap: e.target.value } })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="20100"
+                        maxLength={5}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
+                      <input
+                        type="text"
+                        value={formData.nuovoCliente.provincia}
+                        onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, provincia: e.target.value } })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="MI"
+                        maxLength={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">URL Foto</label>
+                      <input
+                        type="url"
+                        value={formData.nuovoCliente.fotoUrl}
+                        onChange={(e) => setFormData({ ...formData, nuovoCliente: { ...formData.nuovoCliente, fotoUrl: e.target.value } })}
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://..."
                       />
                     </div>
                   </div>
