@@ -145,7 +145,8 @@ export async function POST(request: NextRequest) {
         data_inizio,
         data_fine_prevista,
         costo_stimato,
-        note
+        note,
+        updated_at: new Date().toISOString()
       })
       .select(`
         *,

@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Genera ID per la fattura
     const fatturaId = generateUUID();
+    const now = new Date().toISOString();
 
     // Crea fattura
     const { data: fattura, error: fattError } = await supabaseServer
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
         data_scadenza: dataScadenza,
         importo_totale: importoTotale,
         note: note || null,
-        stato: 'emessa'
+        stato: 'emessa',
+        updated_at: now
       })
       .select()
       .single();
@@ -111,7 +113,8 @@ export async function POST(request: NextRequest) {
       descrizione: voce.descrizione,
       quantita: voce.quantita,
       prezzo_unitario: voce.prezzoUnitario,
-      totale: voce.quantita * voce.prezzoUnitario
+      totale: voce.quantita * voce.prezzoUnitario,
+      updated_at: now
     }));
 
     const { error: vociError } = await supabaseServer

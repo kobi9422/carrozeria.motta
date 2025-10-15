@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
         nome,
         cognome,
         telefono: telefono || null,
-        email: email || null
+        email: email || null,
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();

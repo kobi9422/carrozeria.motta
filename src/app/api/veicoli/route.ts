@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
         targa,
         colore,
         numero_telaio,
-        note
+        note,
+        updated_at: new Date().toISOString()
       })
       .select(`
         *,

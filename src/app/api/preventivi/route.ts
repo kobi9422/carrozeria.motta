@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
     const preventivoId = generateUUID();
 
     // Crea preventivo
+    const now = new Date().toISOString();
     const { data: preventivo, error: prevError } = await supabaseServer
       .from('preventivi')
       .insert({
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
         data_scadenza: dataScadenza || null,
         importo_totale: importoTotale,
         note: note || null,
-        stato: 'bozza'
+        stato: 'bozza',
+        updated_at: now
       })
       .select()
       .single();
@@ -111,7 +113,8 @@ export async function POST(request: NextRequest) {
       descrizione: voce.descrizione,
       quantita: voce.quantita,
       prezzo_unitario: voce.prezzoUnitario,
-      totale: voce.quantita * voce.prezzoUnitario
+      totale: voce.quantita * voce.prezzoUnitario,
+      updated_at: now
     }));
 
     const { error: vociError } = await supabaseServer

@@ -74,13 +74,15 @@ export async function PATCH(
 
     // Se ci sono nuove voci, creale
     if (voci) {
+      const now = new Date().toISOString();
       const vociData = voci.map((voce: any) => ({
         id: generateUUID(),
         preventivo_id: params.id,
         descrizione: voce.descrizione,
         quantita: voce.quantita,
         prezzo_unitario: voce.prezzoUnitario,
-        totale: voce.quantita * voce.prezzoUnitario
+        totale: voce.quantita * voce.prezzoUnitario,
+        updated_at: now
       }));
 
       const { error: vociError } = await supabaseServer
