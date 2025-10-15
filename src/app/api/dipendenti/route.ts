@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 import bcrypt from 'bcryptjs';
 
 // GET - Lista tutti i dipendenti
@@ -8,25 +9,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const attiviOnly = searchParams.get('attivi') === 'true';
 
-    const dipendenti = await prisma.user.findMany({
-      where: attiviOnly ? { attivo: true } : undefined,
-      select: {
-        id: true,
-        nome: true,
-        cognome: true,
-        email: true,
-        telefono: true,
-        ruolo: true,
-        attivo: true,
-        createdAt: true
-      },
-      orderBy: {
-        cognome: 'asc'
-      }
-    });
+    let query = supabaseServer
+      .from('users')
+      .select('id, nome, cognome, email, telefono, ruolo, attivo, costo_orario, created_at')
+      .order('cognome', { ascending: true });
 
-    return NextResponse.json(dipendenti);
-  } catch (error) {
+    if (attiviOnly) {
+      query = query.eq('attivo', true);
+    }
+
+    const { data: dipendenti, error } = await query;
+
+    if (error) {
+      console.error('Errore nel recupero dipendenti:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(toCamelCase(dipendenti || []));
+  } catch (error: any) {
     console.error('Errore nel recupero dipendenti:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero dei dipendenti' },
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nome, cognome, email, telefono, password, ruolo } = body;
+    const { nome, cognome, email, telefono, password, ruolo, costoOrario } = body;
 
     // Validazione
     if (!nome || !cognome || !email || !password) {
@@ -50,9 +50,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifica email duplicata
-    const esistente = await prisma.user.findUnique({
-      where: { email }
-    });
+    const { data: esistente } = await supabaseServer
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
 
     if (esistente) {
       return NextResponse.json(
@@ -61,33 +63,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password con bcryptjs (usa $2b$ invece di $2a$)
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const dipendente = await prisma.user.create({
-      data: {
+    const now = new Date().toISOString();
+
+    const { data: dipendente, error } = await supabaseServer
+      .from('users')
+      .insert({
         nome,
         cognome,
         email,
-        telefono,
+        telefono: telefono || null,
         password: hashedPassword,
         ruolo: ruolo || 'employee',
-        attivo: true
-      },
-      select: {
-        id: true,
-        nome: true,
-        cognome: true,
-        email: true,
-        telefono: true,
-        ruolo: true,
         attivo: true,
-        createdAt: true
-      }
-    });
+        costo_orario: costoOrario || 0,
+        updated_at: now
+      })
+      .select('id, nome, cognome, email, telefono, ruolo, attivo, costo_orario, created_at')
+      .single();
 
-    return NextResponse.json(dipendente, { status: 201 });
-  } catch (error) {
+    if (error) {
+      console.error('Errore nella creazione dipendente:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(toCamelCase(dipendente), { status: 201 });
+  } catch (error: any) {
     console.error('Errore nella creazione dipendente:', error);
     return NextResponse.json(
       { error: 'Errore nella creazione del dipendente' },
