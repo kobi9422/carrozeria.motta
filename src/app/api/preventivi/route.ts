@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 
 // GET /api/preventivi - Ottieni tutti i preventivi
 export async function GET(request: NextRequest) {
@@ -79,10 +79,14 @@ export async function POST(request: NextRequest) {
 
     const numeroPreventivo = `PREV-${anno}-${numeroProgressivo.toString().padStart(3, '0')}`;
 
+    // Genera ID per il preventivo
+    const preventivoId = generateUUID();
+
     // Crea preventivo
     const { data: preventivo, error: prevError } = await supabaseServer
       .from('preventivi')
       .insert({
+        id: preventivoId,
         numero_preventivo: numeroPreventivo,
         cliente_id: clienteId,
         titolo,
@@ -102,6 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Crea voci preventivo
     const vociData = voci.map((voce: any) => ({
+      id: generateUUID(),
       preventivo_id: preventivo.id,
       descrizione: voce.descrizione,
       quantita: voce.quantita,

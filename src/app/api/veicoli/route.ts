@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 
 // GET /api/veicoli - Ottieni tutti i veicoli
 export async function GET(request: NextRequest) {
@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseServer
       .from('veicoli')
       .insert({
+        id: generateUUID(),
         cliente_id,
         marca,
         modello,

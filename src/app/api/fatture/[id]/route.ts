@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 
 // GET /api/fatture/[id] - Ottieni una fattura specifica
 export async function GET(
@@ -74,6 +74,7 @@ export async function PATCH(
     // Se ci sono nuove voci, creale
     if (voci) {
       const vociData = voci.map((voce: any) => ({
+        id: generateUUID(),
         fattura_id: params.id,
         descrizione: voce.descrizione,
         quantita: voce.quantita,

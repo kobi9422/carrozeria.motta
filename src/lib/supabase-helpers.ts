@@ -1,6 +1,15 @@
 /**
  * Converte i nomi dei campi da snake_case a camelCase
  */
+// Genera un UUID v4
+export function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export function toCamelCase(obj: any): any {
   if (obj === null || obj === undefined) {
     return obj;

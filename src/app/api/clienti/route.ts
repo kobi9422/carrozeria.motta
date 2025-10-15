@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 
 // GET /api/clienti - Ottieni tutti i clienti
 export async function GET(request: NextRequest) {
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     const { data: cliente, error } = await supabaseServer
       .from('clienti')
       .insert({
+        id: generateUUID(),
         nome,
         cognome,
         telefono: telefono || null,

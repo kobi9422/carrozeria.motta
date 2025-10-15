@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 
 // GET /api/fatture - Ottieni tutte le fatture
 export async function GET(request: NextRequest) {
@@ -81,10 +81,14 @@ export async function POST(request: NextRequest) {
 
     const numeroFattura = `FATT-${anno}-${numeroProgressivo.toString().padStart(3, '0')}`;
 
+    // Genera ID per la fattura
+    const fatturaId = generateUUID();
+
     // Crea fattura
     const { data: fattura, error: fattError } = await supabaseServer
       .from('fatture')
       .insert({
+        id: fatturaId,
         numero_fattura: numeroFattura,
         cliente_id: clienteId,
         data_scadenza: dataScadenza,
@@ -102,6 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Crea voci fattura
     const vociData = voci.map((voce: any) => ({
+      id: generateUUID(),
       fattura_id: fattura.id,
       descrizione: voce.descrizione,
       quantita: voce.quantita,

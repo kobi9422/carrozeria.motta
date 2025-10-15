@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 
 // GET /api/ordini-lavoro - Ottieni tutti gli ordini di lavoro
 export async function GET(request: NextRequest) {
@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseServer
       .from('ordini_lavoro')
       .insert({
+        id: generateUUID(),
         numero_ordine: numeroOrdine,
         cliente_id,
         veicolo_id,
