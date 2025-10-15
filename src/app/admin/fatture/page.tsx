@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Receipt, Plus, X, Trash2, Check, XCircle, Euro, User, Calendar, Printer, Download } from 'lucide-react';
+import { Receipt, Plus, X, Trash2, Check, XCircle, Euro, User, Calendar, Printer, Download, Archive } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PrintFattura } from '@/components/PrintFattura';
 import { generateFatturaPDF } from '@/lib/pdfGenerator';
@@ -114,6 +114,28 @@ export default function FatturePage() {
       fetchFatture();
     } catch (error: any) {
       setToast({ message: error.message, type: 'error' });
+    }
+  };
+
+  const handleArchivia = async (fatturaId: string) => {
+    if (!confirm('Vuoi archiviare questa fattura? Potrà essere ripristinata dall\'archivio.')) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/fatture/${fatturaId}/archivia`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archivia: true })
+      });
+
+      if (!res.ok) throw new Error('Errore nell\'archiviazione');
+
+      setToast({ message: 'Fattura archiviata con successo!', type: 'success' });
+      await fetchFatture(); // Ricarica lista
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -351,6 +373,15 @@ export default function FatturePage() {
                     <Trash2 className="w-4 h-4" />
                     Elimina
                   </button>
+                  {(fattura.stato === 'pagata' || fattura.stato === 'annullata') && (
+                    <button
+                      onClick={() => handleArchivia(fattura.id)}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Archivia
+                    </button>
+                  )}
                 </div>
               </div>
             ))

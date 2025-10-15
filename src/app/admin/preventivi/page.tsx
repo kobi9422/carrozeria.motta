@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, X, Trash2, Send, Check, XCircle, Euro, User, Printer, Download } from 'lucide-react';
+import { FileText, Plus, X, Trash2, Send, Check, XCircle, Euro, User, Printer, Download, Archive } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PrintPreventivo } from '@/components/PrintPreventivo';
 import { generatePreventivoPDF } from '@/lib/pdfGenerator';
@@ -113,6 +113,28 @@ export default function PreventiviPage() {
       fetchPreventivi();
     } catch (error: any) {
       setToast({ message: error.message, type: 'error' });
+    }
+  };
+
+  const handleArchivia = async (preventivoId: string) => {
+    if (!confirm('Vuoi archiviare questo preventivo? Potrà essere ripristinato dall\'archivio.')) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/preventivi/${preventivoId}/archivia`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archivia: true })
+      });
+
+      if (!res.ok) throw new Error('Errore nell\'archiviazione');
+
+      setToast({ message: 'Preventivo archiviato con successo!', type: 'success' });
+      await fetchPreventivi(); // Ricarica lista
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -345,6 +367,15 @@ export default function PreventiviPage() {
                     <Trash2 className="w-4 h-4" />
                     Elimina
                   </button>
+                  {(preventivo.stato === 'accettato' || preventivo.stato === 'rifiutato' || preventivo.stato === 'scaduto') && (
+                    <button
+                      onClick={() => handleArchivia(preventivo.id)}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Archivia
+                    </button>
+                  )}
                 </div>
               </div>
             ))

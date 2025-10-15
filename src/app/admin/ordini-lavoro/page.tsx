@@ -5,7 +5,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Modal } from '@/components/Modal';
 import { Toast } from '@/components/Toast';
 import { useAuth } from '@/components/AuthProvider';
-import { Plus, Search, Edit, Eye, Clock, CheckCircle, AlertCircle, Users, UserPlus, X, Calendar, Euro, Phone, Car, Wrench, Filter } from 'lucide-react';
+import { Plus, Search, Edit, Eye, Clock, CheckCircle, AlertCircle, Users, UserPlus, X, Calendar, Euro, Phone, Car, Wrench, Filter, Archive } from 'lucide-react';
 
 interface Dipendente {
   id: string;
@@ -213,6 +213,28 @@ export default function OrdiniLavoroPage() {
         return [...prev, dipendenteId];
       }
     });
+  };
+
+  const handleArchivia = async (ordineId: string) => {
+    if (!confirm('Vuoi archiviare questo ordine? Potrà essere ripristinato dall\'archivio.')) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/ordini-lavoro/${ordineId}/archivia`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archivia: true })
+      });
+
+      if (!res.ok) throw new Error('Errore nell\'archiviazione');
+
+      setToast({ message: 'Ordine archiviato con successo!', type: 'success' });
+      await fetchOrdini(); // Ricarica lista
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSalvaCliente = async () => {
@@ -608,6 +630,15 @@ export default function OrdiniLavoroPage() {
                       <Eye className="w-5 h-5" />
                       Visualizza Dettagli
                     </button>
+                    {isAdmin && (ordine.stato === 'completato' || ordine.stato === 'consegnato') && (
+                      <button
+                        onClick={() => handleArchivia(ordine.id)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                      >
+                        <Archive className="w-5 h-5" />
+                        Archivia
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
