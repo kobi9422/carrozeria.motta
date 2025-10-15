@@ -54,7 +54,9 @@ export default function ArchivioPage() {
       if (filtri.dataInizio) params.append('dataInizio', filtri.dataInizio);
       if (filtri.dataFine) params.append('dataFine', filtri.dataFine);
 
-      const res = await fetch(`/api/archivio?${params.toString()}`);
+      const res = await fetch(`/api/archivio?${params.toString()}`, {
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error('Errore nel caricamento archivio');
 
       const data = await res.json();
