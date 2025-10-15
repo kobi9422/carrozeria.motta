@@ -99,11 +99,15 @@ export async function getUserFromToken(token: string): Promise<User | null> {
       return null;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-    });
+    const { supabaseServer } = await import('@/lib/supabase');
+    const { data: user, error } = await supabaseServer
+      .from('users')
+      .select('*')
+      .eq('id', payload.userId)
+      .eq('attivo', true)
+      .single();
 
-    if (!user || !user.attivo) {
+    if (error || !user) {
       return null;
     }
 
@@ -114,8 +118,8 @@ export async function getUserFromToken(token: string): Promise<User | null> {
       cognome: user.cognome,
       ruolo: user.ruolo,
       attivo: user.attivo,
-      created_at: user.createdAt.toISOString(),
-      updated_at: user.updatedAt.toISOString(),
+      created_at: user.created_at,
+      updated_at: user.updated_at,
     };
   } catch (error) {
     return null;

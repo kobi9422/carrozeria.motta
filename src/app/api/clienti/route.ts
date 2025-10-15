@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
 
 // GET /api/clienti - Ottieni tutti i clienti
 export async function GET(request: NextRequest) {
   try {
-    const clienti = await prisma.cliente.findMany({
-      orderBy: [
-        { cognome: 'asc' },
-        { nome: 'asc' }
-      ]
-    });
+    const { data: clienti, error } = await supabaseServer
+      .from('clienti')
+      .select('*')
+      .order('cognome', { ascending: true })
+      .order('nome', { ascending: true });
+
+    if (error) {
+      console.error('Errore Supabase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json(clienti);
   } catch (error: any) {
@@ -29,14 +33,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome e cognome sono obbligatori' }, { status: 400 });
     }
 
-    const cliente = await prisma.cliente.create({
-      data: {
+    const { data: cliente, error } = await supabaseServer
+      .from('clienti')
+      .insert({
         nome,
         cognome,
         telefono: telefono || null,
         email: email || null
-      }
-    });
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Errore Supabase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json(cliente, { status: 201 });
   } catch (error: any) {
