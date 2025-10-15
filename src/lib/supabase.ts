@@ -1,33 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_anon_key';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Client per il browser (con controllo per placeholder)
-export const supabase = supabaseUrl.includes('placeholder')
-  ? null
-  : createBrowserClient(supabaseUrl, supabaseAnonKey);
+// Client per il browser
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-// Client per il server (con service role key)
-export const supabaseAdmin = supabaseUrl.includes('placeholder')
-  ? null
-  : createClient(
-      supabaseUrl,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_service_role_key',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+// Client per il server (API routes) - usa anon key per Row Level Security
+export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // Funzione per creare client Supabase per Server Components
 export function createServerClient() {
-  if (supabaseUrl.includes('placeholder')) {
-    return null;
-  }
   return createClient(supabaseUrl, supabaseAnonKey);
 }
 
