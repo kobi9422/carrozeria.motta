@@ -1,58 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET - Lista tutti gli ordini
 export async function GET(request: NextRequest) {
   try {
-    const ordini = await prisma.ordineLavoro.findMany({
-      include: {
-        cliente: true,
-        veicolo: true,
-        dipendenti: {
-          include: {
-            dipendente: {
-              select: {
-                id: true,
-                nome: true,
-                cognome: true,
-                email: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        dataInizio: 'desc'
-      }
-    });
+    // Recupera ordini con relazioni
+    const { data: ordini, error } = await supabaseServer
+      .from('ordini_lavoro')
+      .select(`
+        *,
+        cliente:clienti!ordini_lavoro_cliente_id_fkey (
+          id,
+          nome,
+          cognome
+        ),
+        veicolo:veicoli!ordini_lavoro_veicolo_id_fkey (
+          id,
+          marca,
+          modello,
+          targa
+        )
+      `)
+      .order('data_inizio', { ascending: false });
 
-    // Trasforma i dati per il frontend
-    const ordiniFormatted = ordini.map(ordine => ({
-      id: ordine.id,
-      numeroOrdine: ordine.numeroOrdine,
-      cliente: {
-        id: ordine.cliente.id,
-        nome: ordine.cliente.nome,
-        cognome: ordine.cliente.cognome
-      },
-      veicolo: ordine.veicolo ? {
-        id: ordine.veicolo.id,
-        marca: ordine.veicolo.marca,
-        modello: ordine.veicolo.modello,
-        targa: ordine.veicolo.targa
-      } : null,
-      descrizione: ordine.descrizione,
-      stato: ordine.stato,
-      priorita: ordine.priorita,
-      dataInizio: ordine.dataInizio.toISOString().split('T')[0],
-      dataFine: ordine.dataFine ? ordine.dataFine.toISOString().split('T')[0] : null,
-      costoStimato: ordine.costoStimato,
-      tempoLavorato: ordine.tempoLavorato || 0,
-      dipendentiAssegnati: ordine.dipendenti.map(d => d.dipendente.id)
-    }));
+    if (error) {
+      console.error('Errore nel recupero ordini:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    return NextResponse.json(ordiniFormatted);
-  } catch (error) {
+    // Per ogni ordine, recupera i dipendenti assegnati
+    const ordiniWithDipendenti = await Promise.all(
+      (ordini || []).map(async (ordine: any) => {
+        const { data: dipendentiAssegnati } = await supabaseServer
+          .from('dipendenti_ordini')
+          .select(`
+            dipendente:users!dipendenti_ordini_dipendente_id_fkey (
+              id,
+              nome,
+              cognome,
+              email
+            )
+          `)
+          .eq('ordine_lavoro_id', ordine.id);
+
+        return {
+          ...ordine,
+          dipendenti_assegnati: (dipendentiAssegnati || []).map((d: any) => d.dipendente?.id).filter(Boolean)
+        };
+      })
+    );
+
+    return NextResponse.json(toCamelCase(ordiniWithDipendenti));
+  } catch (error: any) {
     console.error('Errore nel recupero ordini:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero degli ordini' },
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
       dataInizio,
       dataFine,
       costoStimato,
-      dipendentiIds
+      dipendentiIds,
+      note
     } = body;
 
     // Validazione
@@ -87,20 +88,16 @@ export async function POST(request: NextRequest) {
 
     // Genera numero ordine
     const anno = new Date().getFullYear();
-    const ultimoOrdine = await prisma.ordineLavoro.findFirst({
-      where: {
-        numeroOrdine: {
-          startsWith: `ORD-${anno}-`
-        }
-      },
-      orderBy: {
-        numeroOrdine: 'desc'
-      }
-    });
+    const { data: ultimiOrdini } = await supabaseServer
+      .from('ordini_lavoro')
+      .select('numero_ordine')
+      .like('numero_ordine', `ORD-${anno}-%`)
+      .order('numero_ordine', { ascending: false })
+      .limit(1);
 
     let numeroProgressivo = 1;
-    if (ultimoOrdine) {
-      const match = ultimoOrdine.numeroOrdine.match(/ORD-\d{4}-(\d+)/);
+    if (ultimiOrdini && ultimiOrdini.length > 0) {
+      const match = ultimiOrdini[0].numero_ordine.match(/ORD-\d{4}-(\d+)/);
       if (match) {
         numeroProgressivo = parseInt(match[1]) + 1;
       }
@@ -108,40 +105,68 @@ export async function POST(request: NextRequest) {
 
     const numeroOrdine = `ORD-${anno}-${numeroProgressivo.toString().padStart(3, '0')}`;
 
+    const now = new Date().toISOString();
+    const ordineId = crypto.randomUUID();
+
     // Crea ordine
-    const ordine = await prisma.ordineLavoro.create({
-      data: {
-        numeroOrdine,
-        clienteId,
-        veicoloId: veicoloId || null,
+    const { data: ordine, error: ordineError } = await supabaseServer
+      .from('ordini_lavoro')
+      .insert({
+        id: ordineId,
+        numero_ordine: numeroOrdine,
+        cliente_id: clienteId,
+        veicolo_id: veicoloId || null,
         descrizione,
         stato: stato || 'in_attesa',
         priorita: priorita || 'media',
-        dataInizio: new Date(dataInizio),
-        dataFine: dataFine ? new Date(dataFine) : null,
-        costoStimato: parseFloat(costoStimato) || 0,
-        tempoLavorato: 0,
-        dipendenti: dipendentiIds && dipendentiIds.length > 0 ? {
-          create: dipendentiIds.map((dipId: string) => ({
-            dipendente: {
-              connect: { id: dipId }
-            }
-          }))
-        } : undefined
-      },
-      include: {
-        cliente: true,
-        veicolo: true,
-        dipendenti: {
-          include: {
-            dipendente: true
-          }
-        }
-      }
-    });
+        data_inizio: dataInizio ? new Date(dataInizio).toISOString() : now,
+        data_fine: dataFine ? new Date(dataFine).toISOString() : null,
+        costo_stimato: parseFloat(costoStimato) || 0,
+        tempo_lavorato: 0,
+        note: note || null,
+        updated_at: now
+      })
+      .select(`
+        *,
+        cliente:clienti!ordini_lavoro_cliente_id_fkey (
+          id,
+          nome,
+          cognome
+        ),
+        veicolo:veicoli!ordini_lavoro_veicolo_id_fkey (
+          id,
+          marca,
+          modello,
+          targa
+        )
+      `)
+      .single();
 
-    return NextResponse.json(ordine, { status: 201 });
-  } catch (error) {
+    if (ordineError) {
+      console.error('Errore nella creazione ordine:', ordineError);
+      return NextResponse.json({ error: ordineError.message }, { status: 500 });
+    }
+
+    // Assegna dipendenti se specificati
+    if (dipendentiIds && dipendentiIds.length > 0) {
+      const assegnazioni = dipendentiIds.map((dipId: string) => ({
+        id: crypto.randomUUID(),
+        dipendente_id: dipId,
+        ordine_lavoro_id: ordineId
+      }));
+
+      const { error: assegnazioniError } = await supabaseServer
+        .from('dipendenti_ordini')
+        .insert(assegnazioni);
+
+      if (assegnazioniError) {
+        console.error('Errore nell\'assegnazione dipendenti:', assegnazioniError);
+        // Non blocchiamo la creazione dell'ordine per questo errore
+      }
+    }
+
+    return NextResponse.json(toCamelCase(ordine), { status: 201 });
+  } catch (error: any) {
     console.error('Errore nella creazione ordine:', error);
     return NextResponse.json(
       { error: 'Errore nella creazione dell\'ordine' },
