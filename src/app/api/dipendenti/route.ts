@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     const { data: dipendente, error } = await supabaseServer
       .from('users')
       .insert({
+        id: generateUUID(),
         nome,
         cognome,
         email,
