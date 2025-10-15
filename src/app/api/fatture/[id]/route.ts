@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/fatture/[id] - Ottieni una fattura specifica
 export async function GET(
@@ -7,19 +8,21 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const fattura = await prisma.fattura.findUnique({
-      where: { id: params.id },
-      include: {
-        cliente: true,
-        voci: true
-      }
-    });
+    const { data: fattura, error } = await supabaseServer
+      .from('fatture')
+      .select(`
+        *,
+        cliente:clienti!fatture_cliente_id_fkey (*),
+        voci:voci_fattura (*)
+      `)
+      .eq('id', params.id)
+      .single();
 
-    if (!fattura) {
+    if (error || !fattura) {
       return NextResponse.json({ error: 'Fattura non trovata' }, { status: 404 });
     }
 
-    return NextResponse.json(fattura);
+    return NextResponse.json(toCamelCase(fattura));
   } catch (error: any) {
     console.error('Errore GET /api/fatture/[id]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -42,40 +45,64 @@ export async function PATCH(
         return sum + (voce.quantita * voce.prezzoUnitario);
       }, 0);
 
-      // Elimina vecchie voci e crea nuove
-      await prisma.voceFattura.deleteMany({
-        where: { fatturaId: params.id }
-      });
+      // Elimina vecchie voci
+      await supabaseServer
+        .from('voci_fattura')
+        .delete()
+        .eq('fattura_id', params.id);
     }
 
-    const fattura = await prisma.fattura.update({
-      where: { id: params.id },
-      data: {
-        ...(stato && { stato }),
-        ...(dataScadenza && { dataScadenza: new Date(dataScadenza) }),
-        ...(dataPagamento !== undefined && { 
-          dataPagamento: dataPagamento ? new Date(dataPagamento) : null 
-        }),
-        ...(importoTotale !== undefined && { importoTotale }),
-        ...(note !== undefined && { note }),
-        ...(voci && {
-          voci: {
-            create: voci.map((voce: any) => ({
-              descrizione: voce.descrizione,
-              quantita: voce.quantita,
-              prezzoUnitario: voce.prezzoUnitario,
-              totale: voce.quantita * voce.prezzoUnitario
-            }))
-          }
-        })
-      },
-      include: {
-        cliente: true,
-        voci: true
-      }
-    });
+    // Prepara dati aggiornamento
+    const updateData: any = {};
+    if (stato) updateData.stato = stato;
+    if (dataScadenza) updateData.data_scadenza = dataScadenza;
+    if (dataPagamento !== undefined) updateData.data_pagamento = dataPagamento || null;
+    if (importoTotale !== undefined) updateData.importo_totale = importoTotale;
+    if (note !== undefined) updateData.note = note;
 
-    return NextResponse.json(fattura);
+    // Aggiorna fattura
+    const { error: updateError } = await supabaseServer
+      .from('fatture')
+      .update(updateData)
+      .eq('id', params.id);
+
+    if (updateError) {
+      console.error('Errore aggiornamento fattura:', updateError);
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    // Se ci sono nuove voci, creale
+    if (voci) {
+      const vociData = voci.map((voce: any) => ({
+        fattura_id: params.id,
+        descrizione: voce.descrizione,
+        quantita: voce.quantita,
+        prezzo_unitario: voce.prezzoUnitario,
+        totale: voce.quantita * voce.prezzoUnitario
+      }));
+
+      const { error: vociError } = await supabaseServer
+        .from('voci_fattura')
+        .insert(vociData);
+
+      if (vociError) {
+        console.error('Errore creazione voci:', vociError);
+        return NextResponse.json({ error: vociError.message }, { status: 500 });
+      }
+    }
+
+    // Recupera fattura aggiornata
+    const { data: fattura } = await supabaseServer
+      .from('fatture')
+      .select(`
+        *,
+        cliente:clienti!fatture_cliente_id_fkey (*),
+        voci:voci_fattura (*)
+      `)
+      .eq('id', params.id)
+      .single();
+
+    return NextResponse.json(toCamelCase(fattura));
   } catch (error: any) {
     console.error('Errore PATCH /api/fatture/[id]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -88,9 +115,22 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.fattura.delete({
-      where: { id: params.id }
-    });
+    // Prima elimina le voci (foreign key)
+    await supabaseServer
+      .from('voci_fattura')
+      .delete()
+      .eq('fattura_id', params.id);
+
+    // Poi elimina la fattura
+    const { error } = await supabaseServer
+      .from('fatture')
+      .delete()
+      .eq('id', params.id);
+
+    if (error) {
+      console.error('Errore eliminazione fattura:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({ message: 'Fattura eliminata con successo' });
   } catch (error: any) {

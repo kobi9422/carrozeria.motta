@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/veicoli - Ottieni tutti i veicoli
 export async function GET(request: NextRequest) {
@@ -11,17 +12,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
-    const { searchParams } = new URL(request.url);
+    const { searchParams} = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const clienteId = searchParams.get('cliente_id');
 
-    let query = supabase
+    let query = supabaseServer
       .from('veicoli')
       .select(`
         *,
@@ -57,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data,
+      data: toCamelCase(data || []),
       pagination: {
         page,
         limit,
@@ -80,22 +77,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
     const body = await request.json();
     const { cliente_id, marca, modello, anno, targa, colore, numero_telaio, note } = body;
 
     // Validazione base
     if (!cliente_id || !marca || !modello || !targa) {
-      return NextResponse.json({ 
-        error: 'Cliente, marca, modello e targa sono obbligatori' 
+      return NextResponse.json({
+        error: 'Cliente, marca, modello e targa sono obbligatori'
       }, { status: 400 });
     }
 
     // Verifica che il cliente esista
-    const { data: cliente, error: clienteError } = await supabase
+    const { data: cliente, error: clienteError } = await supabaseServer
       .from('clienti')
       .select('id')
       .eq('id', cliente_id)
@@ -106,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifica che la targa non sia già in uso
-    const { data: targaEsistente, error: targaError } = await supabase
+    const { data: targaEsistente, error: targaError } = await supabaseServer
       .from('veicoli')
       .select('id')
       .eq('targa', targa)
@@ -120,7 +113,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Targa già esistente' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('veicoli')
       .insert({
         cliente_id,
@@ -146,7 +139,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(toCamelCase(data), { status: 201 });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

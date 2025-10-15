@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/dashboard/stats - Ottieni statistiche per la dashboard
 export async function GET(request: NextRequest) {
@@ -11,17 +12,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
     const stats: any = {};
 
     if (user.ruolo === 'admin') {
       // Statistiche per admin
       
       // Ordini di lavoro attivi
-      const { count: ordiniAttivi, error: ordiniAttiviError } = await supabase
+      const { count: ordiniAttivi, error: ordiniAttiviError } = await supabaseServerServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .in('stato', ['in_attesa', 'in_lavorazione']);
@@ -35,7 +32,7 @@ export async function GET(request: NextRequest) {
       inizioMese.setDate(1);
       inizioMese.setHours(0, 0, 0, 0);
 
-      const { count: ordiniCompletatiMese, error: ordiniCompletatiError } = await supabase
+      const { count: ordiniCompletatiMese, error: ordiniCompletatiError } = await supabaseServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .eq('stato', 'completato')
@@ -46,7 +43,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Fatturato del mese
-      const { data: fattureDelMese, error: fattureError } = await supabase
+      const { data: fattureDelMese, error: fattureError } = await supabaseServer
         .from('fatture')
         .select('importo_totale')
         .eq('stato', 'pagata')
@@ -59,7 +56,7 @@ export async function GET(request: NextRequest) {
       const fatturato = fattureDelMese?.reduce((sum, fattura) => sum + (fattura.importo_totale || 0), 0) || 0;
 
       // Clienti totali
-      const { count: clientiTotali, error: clientiError } = await supabase
+      const { count: clientiTotali, error: clientiError } = await supabaseServer
         .from('clienti')
         .select('*', { count: 'exact', head: true });
 
@@ -68,7 +65,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Preventivi in attesa
-      const { count: preventiviInAttesa, error: preventiviError } = await supabase
+      const { count: preventiviInAttesa, error: preventiviError } = await supabaseServer
         .from('preventivi')
         .select('*', { count: 'exact', head: true })
         .in('stato', ['bozza', 'inviato']);
@@ -79,7 +76,7 @@ export async function GET(request: NextRequest) {
 
       // Fatture scadute
       const oggi = new Date().toISOString().split('T')[0];
-      const { count: fattureScadute, error: fattureScaduteError } = await supabase
+      const { count: fattureScadute, error: fattureScaduteError } = await supabaseServer
         .from('fatture')
         .select('*', { count: 'exact', head: true })
         .eq('stato', 'emessa')
@@ -100,7 +97,7 @@ export async function GET(request: NextRequest) {
       // Statistiche per dipendenti
       
       // Ordini assegnati al dipendente
-      const { count: ordiniAssegnati, error: ordiniAssegnatiError } = await supabase
+      const { count: ordiniAssegnati, error: ordiniAssegnatiError } = await supabaseServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .eq('dipendente_id', user.id)
@@ -111,7 +108,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Ordini in lavorazione
-      const { count: ordiniInLavorazione, error: ordiniInLavorazioneError } = await supabase
+      const { count: ordiniInLavorazione, error: ordiniInLavorazioneError } = await supabaseServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .eq('dipendente_id', user.id)
@@ -123,7 +120,7 @@ export async function GET(request: NextRequest) {
 
       // Ordini completati oggi
       const oggi = new Date().toISOString().split('T')[0];
-      const { count: ordiniCompletatiOggi, error: ordiniCompletatiOggiError } = await supabase
+      const { count: ordiniCompletatiOggi, error: ordiniCompletatiOggiError } = await supabaseServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .eq('dipendente_id', user.id)
@@ -139,7 +136,7 @@ export async function GET(request: NextRequest) {
       stats.ordini_completati_oggi = ordiniCompletatiOggi || 0;
     }
 
-    return NextResponse.json(stats);
+    return NextResponse.json(toCamelCase(stats));
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

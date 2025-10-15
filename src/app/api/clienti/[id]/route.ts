@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/clienti/[id] - Ottieni un cliente specifico
 export async function GET(
@@ -14,11 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('clienti')
       .select(`
         *,
@@ -34,7 +31,7 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(toCamelCase(data));
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -53,10 +50,6 @@ export async function PUT(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
     const body = await request.json();
     const { nome, cognome, telefono, email, indirizzo, citta, cap, note } = body;
 
@@ -65,7 +58,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Nome e cognome sono obbligatori' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('clienti')
       .update({
         nome,
@@ -88,7 +81,7 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(toCamelCase(data));
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -107,12 +100,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
     // Verifica se il cliente ha ordini di lavoro associati
-    const { data: ordini, error: ordiniError } = await supabase
+    const { data: ordini, error: ordiniError } = await supabaseServer
       .from('ordini_lavoro')
       .select('id')
       .eq('cliente_id', params.id)
@@ -123,12 +112,12 @@ export async function DELETE(
     }
 
     if (ordini && ordini.length > 0) {
-      return NextResponse.json({ 
-        error: 'Impossibile eliminare il cliente: ha ordini di lavoro associati' 
+      return NextResponse.json({
+        error: 'Impossibile eliminare il cliente: ha ordini di lavoro associati'
       }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('clienti')
       .delete()
       .eq('id', params.id);

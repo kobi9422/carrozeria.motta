@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/ordini-lavoro - Ottieni tutti gli ordini di lavoro
 export async function GET(request: NextRequest) {
@@ -11,10 +12,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -22,7 +19,7 @@ export async function GET(request: NextRequest) {
     const stato = searchParams.get('stato');
     const dipendenteId = searchParams.get('dipendente_id');
 
-    let query = supabase
+    let query = supabaseServer
       .from('ordini_lavoro')
       .select(`
         *,
@@ -82,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data,
+      data: toCamelCase(data || []),
       pagination: {
         page,
         limit,
@@ -105,40 +102,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database non configurato' }, { status: 500 });
-    }
-
     const body = await request.json();
-    const { 
-      cliente_id, 
-      veicolo_id, 
+    const {
+      cliente_id,
+      veicolo_id,
       dipendente_id,
-      titolo, 
-      descrizione, 
+      titolo,
+      descrizione,
       stato,
       data_inizio,
       data_fine_prevista,
       costo_stimato,
-      note 
+      note
     } = body;
 
     // Validazione base
     if (!cliente_id || !veicolo_id || !titolo || !descrizione || !data_inizio) {
-      return NextResponse.json({ 
-        error: 'Cliente, veicolo, titolo, descrizione e data inizio sono obbligatori' 
+      return NextResponse.json({
+        error: 'Cliente, veicolo, titolo, descrizione e data inizio sono obbligatori'
       }, { status: 400 });
     }
 
     // Genera numero ordine automatico
-    const { data: numeroOrdine, error: numeroError } = await supabase
+    const { data: numeroOrdine, error: numeroError } = await supabaseServer
       .rpc('generate_numero_ordine');
 
     if (numeroError) {
       return NextResponse.json({ error: numeroError.message }, { status: 500 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('ordini_lavoro')
       .insert({
         numero_ordine: numeroOrdine,
@@ -181,7 +174,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(toCamelCase(data), { status: 201 });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
