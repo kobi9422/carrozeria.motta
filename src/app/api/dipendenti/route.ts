@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
-import { toCamelCase } from '@/lib/supabase-helpers';
+import { toCamelCase, generateUUID } from '@/lib/supabase-helpers';
 import bcrypt from 'bcryptjs';
 
 // GET - Lista tutti i dipendenti
