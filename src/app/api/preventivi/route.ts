@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/preventivi - Ottieni tutti i preventivi
 export async function GET(request: NextRequest) {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(preventivi);
+    return NextResponse.json(toCamelCase(preventivi));
   } catch (error: any) {
     console.error('Errore GET /api/preventivi:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       .eq('id', preventivo.id)
       .single();
 
-    return NextResponse.json(preventivoCompleto, { status: 201 });
+    return NextResponse.json(toCamelCase(preventivoCompleto), { status: 201 });
   } catch (error: any) {
     console.error('Errore POST /api/preventivi:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/preventivi/[id] - Ottieni un preventivo specifico
 export async function GET(
@@ -21,7 +22,7 @@ export async function GET(
       return NextResponse.json({ error: 'Preventivo non trovato' }, { status: 404 });
     }
 
-    return NextResponse.json(preventivo);
+    return NextResponse.json(toCamelCase(preventivo));
   } catch (error: any) {
     console.error('Errore GET /api/preventivi/[id]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -102,7 +103,7 @@ export async function PATCH(
       .eq('id', params.id)
       .single();
 
-    return NextResponse.json(preventivo);
+    return NextResponse.json(toCamelCase(preventivo));
   } catch (error: any) {
     console.error('Errore PATCH /api/preventivi/[id]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

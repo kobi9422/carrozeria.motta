@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
+import { toCamelCase } from '@/lib/supabase-helpers';
 
 // GET /api/clienti - Ottieni tutti i clienti
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(clienti);
+    return NextResponse.json(toCamelCase(clienti));
   } catch (error: any) {
     console.error('Errore GET /api/clienti:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(cliente, { status: 201 });
+    return NextResponse.json(toCamelCase(cliente), { status: 201 });
   } catch (error: any) {
     console.error('Errore POST /api/clienti:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
