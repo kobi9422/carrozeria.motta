@@ -57,9 +57,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calcola importo totale
+    // Calcola importo totale con IVA
     const importoTotale = voci.reduce((sum: number, voce: any) => {
-      return sum + (voce.quantita * voce.prezzoUnitario);
+      const subtotale = voce.quantita * voce.prezzoUnitario;
+      const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
+      const totaleConIva = subtotale * (1 + iva / 100);
+      return sum + totaleConIva;
     }, 0);
 
     // Genera numero fattura
@@ -107,15 +110,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Crea voci fattura
-    const vociData = voci.map((voce: any) => ({
-      id: generateUUID(),
-      fattura_id: fattura.id,
-      descrizione: voce.descrizione,
-      quantita: voce.quantita,
-      prezzo_unitario: voce.prezzoUnitario,
-      totale: voce.quantita * voce.prezzoUnitario,
-      updated_at: now
-    }));
+    const vociData = voci.map((voce: any) => {
+      const subtotale = voce.quantita * voce.prezzoUnitario;
+      const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
+      const totaleConIva = subtotale * (1 + iva / 100);
+
+      return {
+        id: generateUUID(),
+        fattura_id: fattura.id,
+        descrizione: voce.descrizione,
+        quantita: voce.quantita,
+        prezzo_unitario: voce.prezzoUnitario,
+        aliquota_iva: iva,
+        totale: totaleConIva,
+        updated_at: now
+      };
+    });
 
     const { error: vociError } = await supabaseServer
       .from('voci_fattura')

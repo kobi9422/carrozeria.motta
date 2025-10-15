@@ -51,25 +51,56 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { nome, cognome, telefono, email, indirizzo, citta, cap, note } = body;
+    const {
+      nome,
+      cognome,
+      telefono,
+      email,
+      indirizzo,
+      citta,
+      cap,
+      provincia,
+      codiceFiscale,
+      partitaIva,
+      tipoCliente,
+      sdi,
+      codiceUnivoco,
+      fotoUrl,
+      note
+    } = body;
 
     // Validazione base
     if (!nome || !cognome) {
       return NextResponse.json({ error: 'Nome e cognome sono obbligatori' }, { status: 400 });
     }
 
+    // Validazione tipo cliente
+    if (tipoCliente && !['privato', 'societa'].includes(tipoCliente)) {
+      return NextResponse.json({ error: 'Tipo cliente non valido. Deve essere "privato" o "societa"' }, { status: 400 });
+    }
+
+    const updateData: any = {
+      nome,
+      cognome,
+      telefono: telefono || null,
+      email: email || null,
+      indirizzo: indirizzo || null,
+      citta: citta || null,
+      cap: cap || null,
+      provincia: provincia || null,
+      codice_fiscale: codiceFiscale || null,
+      partita_iva: partitaIva || null,
+      tipo_cliente: tipoCliente || 'privato',
+      sdi: sdi || null,
+      codice_univoco: codiceUnivoco || null,
+      foto_url: fotoUrl || null,
+      note: note || null,
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabaseServer
       .from('clienti')
-      .update({
-        nome,
-        cognome,
-        telefono,
-        email,
-        indirizzo,
-        citta,
-        cap,
-        note
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single();

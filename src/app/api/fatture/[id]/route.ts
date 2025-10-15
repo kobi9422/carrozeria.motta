@@ -38,11 +38,14 @@ export async function PATCH(
     const body = await request.json();
     const { stato, dataScadenza, dataPagamento, voci, note } = body;
 
-    // Se vengono aggiornate le voci, ricalcola il totale
+    // Se vengono aggiornate le voci, ricalcola il totale con IVA
     let importoTotale;
     if (voci) {
       importoTotale = voci.reduce((sum: number, voce: any) => {
-        return sum + (voce.quantita * voce.prezzoUnitario);
+        const subtotale = voce.quantita * voce.prezzoUnitario;
+        const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
+        const totaleConIva = subtotale * (1 + iva / 100);
+        return sum + totaleConIva;
       }, 0);
 
       // Elimina vecchie voci
@@ -53,9 +56,11 @@ export async function PATCH(
     }
 
     // Prepara dati aggiornamento
-    const updateData: any = {};
-    if (stato) updateData.stato = stato;
-    if (dataScadenza) updateData.data_scadenza = dataScadenza;
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
+    if (stato !== undefined) updateData.stato = stato;
+    if (dataScadenza !== undefined) updateData.data_scadenza = dataScadenza;
     if (dataPagamento !== undefined) updateData.data_pagamento = dataPagamento || null;
     if (importoTotale !== undefined) updateData.importo_totale = importoTotale;
     if (note !== undefined) updateData.note = note;
@@ -74,15 +79,22 @@ export async function PATCH(
     // Se ci sono nuove voci, creale
     if (voci) {
       const now = new Date().toISOString();
-      const vociData = voci.map((voce: any) => ({
-        id: generateUUID(),
-        fattura_id: params.id,
-        descrizione: voce.descrizione,
-        quantita: voce.quantita,
-        prezzo_unitario: voce.prezzoUnitario,
-        totale: voce.quantita * voce.prezzoUnitario,
-        updated_at: now
-      }));
+      const vociData = voci.map((voce: any) => {
+        const subtotale = voce.quantita * voce.prezzoUnitario;
+        const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
+        const totaleConIva = subtotale * (1 + iva / 100);
+
+        return {
+          id: generateUUID(),
+          fattura_id: params.id,
+          descrizione: voce.descrizione,
+          quantita: voce.quantita,
+          prezzo_unitario: voce.prezzoUnitario,
+          aliquota_iva: iva,
+          totale: totaleConIva,
+          updated_at: now
+        };
+      });
 
       const { error: vociError } = await supabaseServer
         .from('voci_fattura')
