@@ -1,8 +1,15 @@
+import { randomUUID } from 'crypto';
+
 /**
  * Converte i nomi dei campi da snake_case a camelCase
  */
 // Genera un UUID v4
 export function generateUUID(): string {
+  // Usa crypto.randomUUID() se disponibile (Node.js 14.17+), altrimenti fallback
+  if (typeof randomUUID === 'function') {
+    return randomUUID();
+  }
+  // Fallback per ambienti che non supportano crypto.randomUUID()
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
