@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
 
 // GET /api/preventivi/[id] - Ottieni un preventivo specifico
 export async function GET(
@@ -7,15 +7,17 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const preventivo = await prisma.preventivo.findUnique({
-      where: { id: params.id },
-      include: {
-        cliente: true,
-        voci: true
-      }
-    });
+    const { data: preventivo, error } = await supabaseServer
+      .from('preventivi')
+      .select(`
+        *,
+        cliente:clienti!preventivi_cliente_id_fkey (*),
+        voci:voci_preventivo (*)
+      `)
+      .eq('id', params.id)
+      .single();
 
-    if (!preventivo) {
+    if (error || !preventivo) {
       return NextResponse.json({ error: 'Preventivo non trovato' }, { status: 404 });
     }
 
@@ -42,37 +44,63 @@ export async function PATCH(
         return sum + (voce.quantita * voce.prezzoUnitario);
       }, 0);
 
-      // Elimina vecchie voci e crea nuove
-      await prisma.vocePreventivo.deleteMany({
-        where: { preventivoId: params.id }
-      });
+      // Elimina vecchie voci
+      await supabaseServer
+        .from('voci_preventivo')
+        .delete()
+        .eq('preventivo_id', params.id);
     }
 
-    const preventivo = await prisma.preventivo.update({
-      where: { id: params.id },
-      data: {
-        ...(stato && { stato }),
-        ...(titolo && { titolo }),
-        ...(descrizione !== undefined && { descrizione }),
-        ...(dataScadenza && { dataScadenza: new Date(dataScadenza) }),
-        ...(importoTotale !== undefined && { importoTotale }),
-        ...(note !== undefined && { note }),
-        ...(voci && {
-          voci: {
-            create: voci.map((voce: any) => ({
-              descrizione: voce.descrizione,
-              quantita: voce.quantita,
-              prezzoUnitario: voce.prezzoUnitario,
-              totale: voce.quantita * voce.prezzoUnitario
-            }))
-          }
-        })
-      },
-      include: {
-        cliente: true,
-        voci: true
+    // Prepara dati aggiornamento
+    const updateData: any = {};
+    if (stato) updateData.stato = stato;
+    if (titolo) updateData.titolo = titolo;
+    if (descrizione !== undefined) updateData.descrizione = descrizione;
+    if (dataScadenza) updateData.data_scadenza = dataScadenza;
+    if (importoTotale !== undefined) updateData.importo_totale = importoTotale;
+    if (note !== undefined) updateData.note = note;
+
+    // Aggiorna preventivo
+    const { error: updateError } = await supabaseServer
+      .from('preventivi')
+      .update(updateData)
+      .eq('id', params.id);
+
+    if (updateError) {
+      console.error('Errore aggiornamento preventivo:', updateError);
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    // Se ci sono nuove voci, creale
+    if (voci) {
+      const vociData = voci.map((voce: any) => ({
+        preventivo_id: params.id,
+        descrizione: voce.descrizione,
+        quantita: voce.quantita,
+        prezzo_unitario: voce.prezzoUnitario,
+        totale: voce.quantita * voce.prezzoUnitario
+      }));
+
+      const { error: vociError } = await supabaseServer
+        .from('voci_preventivo')
+        .insert(vociData);
+
+      if (vociError) {
+        console.error('Errore creazione voci:', vociError);
+        return NextResponse.json({ error: vociError.message }, { status: 500 });
       }
-    });
+    }
+
+    // Recupera preventivo aggiornato
+    const { data: preventivo } = await supabaseServer
+      .from('preventivi')
+      .select(`
+        *,
+        cliente:clienti!preventivi_cliente_id_fkey (*),
+        voci:voci_preventivo (*)
+      `)
+      .eq('id', params.id)
+      .single();
 
     return NextResponse.json(preventivo);
   } catch (error: any) {
@@ -87,9 +115,22 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.preventivo.delete({
-      where: { id: params.id }
-    });
+    // Prima elimina le voci (foreign key)
+    await supabaseServer
+      .from('voci_preventivo')
+      .delete()
+      .eq('preventivo_id', params.id);
+
+    // Poi elimina il preventivo
+    const { error } = await supabaseServer
+      .from('preventivi')
+      .delete()
+      .eq('id', params.id);
+
+    if (error) {
+      console.error('Errore eliminazione preventivo:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({ message: 'Preventivo eliminato con successo' });
   } catch (error: any) {

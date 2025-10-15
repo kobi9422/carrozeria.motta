@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseServer } from '@/lib/supabase';
 
 // GET /api/preventivi - Ottieni tutti i preventivi
 export async function GET(request: NextRequest) {
@@ -7,29 +7,31 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const stato = searchParams.get('stato');
 
-    const where: any = {};
+    let query = supabaseServer
+      .from('preventivi')
+      .select(`
+        *,
+        cliente:clienti!preventivi_cliente_id_fkey (
+          id,
+          nome,
+          cognome,
+          email,
+          telefono
+        ),
+        voci:voci_preventivo (*)
+      `)
+      .order('data_creazione', { ascending: false });
+
     if (stato && stato !== 'tutti') {
-      where.stato = stato;
+      query = query.eq('stato', stato);
     }
 
-    const preventivi = await prisma.preventivo.findMany({
-      where,
-      include: {
-        cliente: {
-          select: {
-            id: true,
-            nome: true,
-            cognome: true,
-            email: true,
-            telefono: true
-          }
-        },
-        voci: true
-      },
-      orderBy: {
-        dataCreazione: 'desc'
-      }
-    });
+    const { data: preventivi, error } = await query;
+
+    if (error) {
+      console.error('Errore Supabase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json(preventivi);
   } catch (error: any) {
@@ -59,20 +61,16 @@ export async function POST(request: NextRequest) {
 
     // Genera numero preventivo
     const anno = new Date().getFullYear();
-    const ultimoPreventivo = await prisma.preventivo.findFirst({
-      where: {
-        numeroPreventivo: {
-          startsWith: `PREV-${anno}-`
-        }
-      },
-      orderBy: {
-        numeroPreventivo: 'desc'
-      }
-    });
+    const { data: ultimiPreventivi } = await supabaseServer
+      .from('preventivi')
+      .select('numero_preventivo')
+      .like('numero_preventivo', `PREV-${anno}-%`)
+      .order('numero_preventivo', { ascending: false })
+      .limit(1);
 
     let numeroProgressivo = 1;
-    if (ultimoPreventivo) {
-      const match = ultimoPreventivo.numeroPreventivo.match(/PREV-\d{4}-(\d+)/);
+    if (ultimiPreventivi && ultimiPreventivi.length > 0) {
+      const match = ultimiPreventivi[0].numero_preventivo.match(/PREV-\d{4}-(\d+)/);
       if (match) {
         numeroProgressivo = parseInt(match[1]) + 1;
       }
@@ -80,32 +78,57 @@ export async function POST(request: NextRequest) {
 
     const numeroPreventivo = `PREV-${anno}-${numeroProgressivo.toString().padStart(3, '0')}`;
 
-    // Crea preventivo con voci
-    const preventivo = await prisma.preventivo.create({
-      data: {
-        numeroPreventivo,
-        clienteId,
+    // Crea preventivo
+    const { data: preventivo, error: prevError } = await supabaseServer
+      .from('preventivi')
+      .insert({
+        numero_preventivo: numeroPreventivo,
+        cliente_id: clienteId,
         titolo,
         descrizione: descrizione || null,
-        dataScadenza: dataScadenza ? new Date(dataScadenza) : null,
-        importoTotale,
+        data_scadenza: dataScadenza || null,
+        importo_totale: importoTotale,
         note: note || null,
-        voci: {
-          create: voci.map((voce: any) => ({
-            descrizione: voce.descrizione,
-            quantita: voce.quantita,
-            prezzoUnitario: voce.prezzoUnitario,
-            totale: voce.quantita * voce.prezzoUnitario
-          }))
-        }
-      },
-      include: {
-        cliente: true,
-        voci: true
-      }
-    });
+        stato: 'bozza'
+      })
+      .select()
+      .single();
 
-    return NextResponse.json(preventivo, { status: 201 });
+    if (prevError) {
+      console.error('Errore creazione preventivo:', prevError);
+      return NextResponse.json({ error: prevError.message }, { status: 500 });
+    }
+
+    // Crea voci preventivo
+    const vociData = voci.map((voce: any) => ({
+      preventivo_id: preventivo.id,
+      descrizione: voce.descrizione,
+      quantita: voce.quantita,
+      prezzo_unitario: voce.prezzoUnitario,
+      totale: voce.quantita * voce.prezzoUnitario
+    }));
+
+    const { error: vociError } = await supabaseServer
+      .from('voci_preventivo')
+      .insert(vociData);
+
+    if (vociError) {
+      console.error('Errore creazione voci:', vociError);
+      return NextResponse.json({ error: vociError.message }, { status: 500 });
+    }
+
+    // Recupera preventivo completo
+    const { data: preventivoCompleto } = await supabaseServer
+      .from('preventivi')
+      .select(`
+        *,
+        cliente:clienti!preventivi_cliente_id_fkey (*),
+        voci:voci_preventivo (*)
+      `)
+      .eq('id', preventivo.id)
+      .single();
+
+    return NextResponse.json(preventivoCompleto, { status: 201 });
   } catch (error: any) {
     console.error('Errore POST /api/preventivi:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
