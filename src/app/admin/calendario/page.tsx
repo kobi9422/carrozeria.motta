@@ -23,24 +23,48 @@ export default function CalendarioPage() {
   const [showModal, setShowModal] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clienti, setClienti] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    titolo: '',
+    tipo: 'appuntamento',
+    data: '',
+    ora: '',
+    clienteId: '',
+    note: ''
+  });
 
-  // Carica eventi dal database
+  // Carica eventi e clienti dal database
   useEffect(() => {
     fetchEvents();
+    fetchClienti();
   }, []);
+
+  const fetchClienti = async () => {
+    try {
+      const res = await fetch('/api/clienti', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setClienti(data);
+      }
+    } catch (error) {
+      console.error('Errore nel caricamento clienti:', error);
+    }
+  };
 
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const [ordiniRes, preventiviRes, fattureRes] = await Promise.all([
-        fetch('/api/ordini'),
-        fetch('/api/preventivi'),
-        fetch('/api/fatture')
+      const [ordiniRes, preventiviRes, fattureRes, eventiRes] = await Promise.all([
+        fetch('/api/ordini', { credentials: 'include' }),
+        fetch('/api/preventivi', { credentials: 'include' }),
+        fetch('/api/fatture', { credentials: 'include' }),
+        fetch('/api/eventi', { credentials: 'include' })
       ]);
 
       const ordini = ordiniRes.ok ? await ordiniRes.json() : [];
       const preventivi = preventiviRes.ok ? await preventiviRes.json() : [];
       const fatture = fattureRes.ok ? await fattureRes.json() : [];
+      const eventiCustom = eventiRes.ok ? await eventiRes.json() : [];
 
       const allEvents: Event[] = [];
 
@@ -86,11 +110,69 @@ export default function CalendarioPage() {
         }
       });
 
+      // Eventi personalizzati
+      eventiCustom.forEach((evento: any) => {
+        if (evento.dataInizio) {
+          allEvents.push({
+            id: `evento-${evento.id}`,
+            title: evento.titolo,
+            date: new Date(evento.dataInizio),
+            type: evento.tipo,
+            cliente: evento.cliente ? `${evento.cliente.nome} ${evento.cliente.cognome}` : undefined,
+            url: undefined
+          });
+        }
+      });
+
       setEvents(allEvents);
     } catch (error) {
       console.error('Errore nel caricamento eventi:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch('/api/eventi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          titolo: formData.titolo,
+          tipo: formData.tipo,
+          dataInizio: formData.data + (formData.ora ? `T${formData.ora}:00` : 'T00:00:00'),
+          clienteId: formData.clienteId || null,
+          note: formData.note || null,
+          tuttoIlGiorno: !formData.ora
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore nella creazione dell\'evento');
+      }
+
+      // Reset form
+      setFormData({
+        titolo: '',
+        tipo: 'appuntamento',
+        data: '',
+        ora: '',
+        clienteId: '',
+        note: ''
+      });
+
+      setShowModal(false);
+      fetchEvents(); // Ricarica eventi
+
+      // Mostra messaggio di successo (opzionale)
+      alert('Evento creato con successo!');
+    } catch (error: any) {
+      console.error('Errore nella creazione evento:', error);
+      alert(error.message || 'Errore nella creazione dell\'evento');
     }
   };
 
@@ -132,10 +214,13 @@ export default function CalendarioPage() {
     });
   };
 
-  const eventTypeColors = {
+  const eventTypeColors: Record<string, string> = {
     ordine: 'bg-blue-500',
     preventivo: 'bg-orange-500',
-    fattura: 'bg-green-500'
+    fattura: 'bg-green-500',
+    appuntamento: 'bg-purple-500',
+    scadenza: 'bg-red-500',
+    altro: 'bg-gray-500'
   };
 
   return (
@@ -288,15 +373,27 @@ export default function CalendarioPage() {
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-500 rounded"></div>
-              <span className="text-sm text-gray-600">Ordini di Lavoro (Scadenza)</span>
+              <span className="text-sm text-gray-600">Ordini di Lavoro</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-orange-500 rounded"></div>
-              <span className="text-sm text-gray-600">Preventivi (Scadenza)</span>
+              <span className="text-sm text-gray-600">Preventivi</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span className="text-sm text-gray-600">Fatture (Scadenza Pagamento)</span>
+              <span className="text-sm text-gray-600">Fatture</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-purple-500 rounded"></div>
+              <span className="text-sm text-gray-600">Appuntamenti</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500 rounded"></div>
+              <span className="text-sm text-gray-600">Scadenze</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-500 rounded"></div>
+              <span className="text-sm text-gray-600">Altri Eventi</span>
             </div>
           </div>
         </div>
@@ -304,11 +401,21 @@ export default function CalendarioPage() {
         {/* Modal Nuovo Evento */}
         <Modal
           isOpen={showModal}
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setShowModal(false);
+            setFormData({
+              titolo: '',
+              tipo: 'appuntamento',
+              data: '',
+              ora: '',
+              clienteId: '',
+              note: ''
+            });
+          }}
           title="Nuovo Evento"
           size="md"
         >
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Titolo Evento *
@@ -316,6 +423,8 @@ export default function CalendarioPage() {
               <input
                 type="text"
                 required
+                value={formData.titolo}
+                onChange={(e) => setFormData({ ...formData, titolo: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Es: Riparazione Fiat Punto"
               />
@@ -325,10 +434,14 @@ export default function CalendarioPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tipo Evento *
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option value="ordine">Ordine di Lavoro</option>
+              <select
+                value={formData.tipo}
+                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
                 <option value="appuntamento">Appuntamento</option>
                 <option value="scadenza">Scadenza</option>
+                <option value="altro">Altro</option>
               </select>
             </div>
 
@@ -339,37 +452,50 @@ export default function CalendarioPage() {
               <input
                 type="date"
                 required
+                value={formData.data}
+                onChange={(e) => setFormData({ ...formData, data: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ora
+                Ora (opzionale)
               </label>
               <input
                 type="time"
+                value={formData.ora}
+                onChange={(e) => setFormData({ ...formData, ora: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cliente
+                Cliente (opzionale)
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <select
+                value={formData.clienteId}
+                onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
                 <option value="">Seleziona cliente...</option>
-                <option value="1">Mario Rossi</option>
-                <option value="2">Laura Bianchi</option>
+                {clienti.map((cliente) => (
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nome} {cliente.cognome}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Note
+                Note (opzionali)
               </label>
               <textarea
                 rows={3}
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Note aggiuntive..."
               />
@@ -378,7 +504,17 @@ export default function CalendarioPage() {
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setFormData({
+                    titolo: '',
+                    tipo: 'appuntamento',
+                    data: '',
+                    ora: '',
+                    clienteId: '',
+                    note: ''
+                  });
+                }}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Annulla
