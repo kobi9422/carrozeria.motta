@@ -297,7 +297,10 @@ export default function EmployeeDashboard() {
                           </p>
 
                           <p className="text-xs text-gray-600">
-                            {ordine.cliente.nome} {ordine.cliente.cognome} • {ordine.veicolo.marca} {ordine.veicolo.modello} • {ordine.veicolo.targa}
+                            {ordine.cliente.nome} {ordine.cliente.cognome}
+                            {ordine.veicolo && (
+                              <> • {ordine.veicolo.marca} {ordine.veicolo.modello} • {ordine.veicolo.targa}</>
+                            )}
                           </p>
 
                           <div className="flex items-center gap-4 mt-2">
@@ -397,7 +400,10 @@ export default function EmployeeDashboard() {
                         </p>
 
                         <p className="text-xs text-gray-600">
-                          {ordine.cliente.nome} {ordine.cliente.cognome} • {ordine.veicolo.marca} {ordine.veicolo.modello} • {ordine.veicolo.targa}
+                          {ordine.cliente.nome} {ordine.cliente.cognome}
+                          {ordine.veicolo && (
+                            <> • {ordine.veicolo.marca} {ordine.veicolo.modello} • {ordine.veicolo.targa}</>
+                          )}
                         </p>
 
                         <div className="flex items-center gap-4 mt-2">
