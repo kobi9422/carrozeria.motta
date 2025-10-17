@@ -132,7 +132,8 @@ export default function OrdiniLavoroPage() {
 
   const fetchPreventivi = async () => {
     try {
-      const res = await fetch('/api/preventivi', { credentials: 'include' });
+      // Includi anche preventivi archiviati per permettere collegamento a ordini
+      const res = await fetch('/api/preventivi?includiArchiviati=true', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         // Filtra solo preventivi accettati

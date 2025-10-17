@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const stato = searchParams.get('stato');
+    const includiArchiviati = searchParams.get('includiArchiviati') === 'true';
 
     let query = supabaseServer
       .from('preventivi')
@@ -28,8 +29,12 @@ export async function GET(request: NextRequest) {
         ),
         voci:voci_preventivo (*)
       `)
-      .eq('archiviato', false) // Escludi preventivi archiviati
       .order('data_creazione', { ascending: false });
+
+    // Escludi preventivi archiviati solo se non richiesto esplicitamente
+    if (!includiArchiviati) {
+      query = query.eq('archiviato', false);
+    }
 
     if (stato && stato !== 'tutti') {
       query = query.eq('stato', stato);
