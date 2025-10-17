@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clienteId, dataScadenza, voci, note } = body;
+    const { clienteId, dataScadenza, voci, note, aliquotaIva } = body;
 
     // Validazione
     if (!clienteId || !dataScadenza || !voci || voci.length === 0) {
@@ -65,11 +65,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Usa l'IVA globale se fornita, altrimenti default 22%
+    const ivaGlobale = aliquotaIva !== undefined ? aliquotaIva : 22;
+
     // Calcola importo totale con IVA
     const importoTotale = voci.reduce((sum: number, voce: any) => {
       const subtotale = voce.quantita * voce.prezzoUnitario;
-      const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
-      const totaleConIva = subtotale * (1 + iva / 100);
+      const totaleConIva = subtotale * (1 + ivaGlobale / 100);
       return sum + totaleConIva;
     }, 0);
 
@@ -117,11 +119,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: fattError?.message || 'Errore creazione fattura' }, { status: 500 });
     }
 
-    // Crea voci fattura
+    // Crea voci fattura con IVA globale
     const vociData = voci.map((voce: any) => {
       const subtotale = voce.quantita * voce.prezzoUnitario;
-      const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
-      const totaleConIva = subtotale * (1 + iva / 100);
+      const totaleConIva = subtotale * (1 + ivaGlobale / 100);
 
       return {
         id: generateUUID(),
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
         descrizione: voce.descrizione,
         quantita: voce.quantita,
         prezzo_unitario: voce.prezzoUnitario,
-        aliquota_iva: iva,
+        aliquota_iva: ivaGlobale,
         totale: totaleConIva,
         updated_at: now
       };

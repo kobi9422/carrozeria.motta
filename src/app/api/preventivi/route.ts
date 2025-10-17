@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clienteId, titolo, descrizione, dataScadenza, voci, note } = body;
+    const { clienteId, titolo, descrizione, dataScadenza, voci, note, aliquotaIva } = body;
 
     // Validazione
     if (!clienteId || !titolo || !voci || voci.length === 0) {
@@ -68,11 +68,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Usa l'IVA globale se fornita, altrimenti default 22%
+    const ivaGlobale = aliquotaIva !== undefined ? aliquotaIva : 22;
+
     // Calcola importo totale con IVA
     const importoTotale = voci.reduce((sum: number, voce: any) => {
       const subtotale = voce.quantita * voce.prezzoUnitario;
-      const iva = voce.aliquotaIva || 22;
-      const totaleConIva = subtotale * (1 + iva / 100);
+      const totaleConIva = subtotale * (1 + ivaGlobale / 100);
       return sum + totaleConIva;
     }, 0);
 
@@ -122,11 +124,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: prevError?.message || 'Errore creazione preventivo' }, { status: 500 });
     }
 
-    // Crea voci preventivo
+    // Crea voci preventivo con IVA globale
     const vociData = voci.map((voce: any) => {
       const subtotale = voce.quantita * voce.prezzoUnitario;
-      const iva = voce.aliquotaIva !== undefined ? voce.aliquotaIva : 22;
-      const totaleConIva = subtotale * (1 + iva / 100);
+      const totaleConIva = subtotale * (1 + ivaGlobale / 100);
 
       return {
         id: generateUUID(),
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
         descrizione: voce.descrizione,
         quantita: voce.quantita,
         prezzo_unitario: voce.prezzoUnitario,
-        aliquota_iva: iva,
+        aliquota_iva: ivaGlobale,
         totale: totaleConIva,
         updated_at: now
       };

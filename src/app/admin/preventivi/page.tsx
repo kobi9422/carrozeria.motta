@@ -22,6 +22,7 @@ export default function PreventiviPage() {
     descrizione: '',
     dataScadenza: '',
     note: '',
+    aliquotaIva: 22, // IVA globale: 22% o 0%
     voci: [{ descrizione: '', quantita: 1, prezzoUnitario: 0 }]
   });
 
@@ -157,7 +158,11 @@ export default function PreventiviPage() {
   };
 
   const calcolaTotale = () => {
-    return formData.voci.reduce((sum, voce) => sum + (voce.quantita * voce.prezzoUnitario), 0);
+    return formData.voci.reduce((sum, voce) => {
+      const subtotale = voce.quantita * voce.prezzoUnitario;
+      const totaleConIva = subtotale * (1 + formData.aliquotaIva / 100);
+      return sum + totaleConIva;
+    }, 0);
   };
 
   const resetForm = () => {
@@ -167,6 +172,7 @@ export default function PreventiviPage() {
       descrizione: '',
       dataScadenza: '',
       note: '',
+      aliquotaIva: 22,
       voci: [{ descrizione: '', quantita: 1, prezzoUnitario: 0 }]
     });
   };
@@ -447,6 +453,23 @@ export default function PreventiviPage() {
                   onChange={(e) => setFormData({ ...formData, dataScadenza: e.target.value })}
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* Aliquota IVA */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">💰 Aliquota IVA *</label>
+                <select
+                  value={formData.aliquotaIva}
+                  onChange={(e) => setFormData({ ...formData, aliquotaIva: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value={22}>22% - IVA Ordinaria</option>
+                  <option value={0}>0% - Esente IVA</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  L'IVA verrà applicata a tutte le voci del preventivo
+                </p>
               </div>
 
               {/* Voci */}
