@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import {
   Users,
@@ -28,11 +28,14 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, signOut, isAdmin } = useAuth();
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      // Redirect alla pagina di login dopo il logout
+      router.push('/auth/login');
     } catch (error) {
       console.error('Errore durante il logout:', error);
     }
