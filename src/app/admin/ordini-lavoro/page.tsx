@@ -5,7 +5,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Modal } from '@/components/Modal';
 import { Toast } from '@/components/Toast';
 import { useAuth } from '@/components/AuthProvider';
-import { Plus, Search, Edit, Eye, Clock, CheckCircle, AlertCircle, Users, UserPlus, X, Calendar, Euro, Phone, Car, Wrench, Filter, Archive } from 'lucide-react';
+import { Plus, Search, Edit, Eye, Clock, CheckCircle, AlertCircle, Users, UserPlus, User, X, Calendar, Euro, Phone, Car, Wrench, Filter, Archive } from 'lucide-react';
 
 interface Dipendente {
   id: string;
@@ -67,6 +67,7 @@ export default function OrdiniLavoroPage() {
   const [filtroStato, setFiltroStato] = useState<string>('tutti');
   const [showModal, setShowModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDettagliModal, setShowDettagliModal] = useState(false);
   const [selectedOrdine, setSelectedOrdine] = useState<OrdineLavoro | null>(null);
   const [selectedDipendenti, setSelectedDipendenti] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -164,6 +165,11 @@ export default function OrdiniLavoroPage() {
     setSelectedOrdine(ordine);
     setSelectedDipendenti(ordine.dipendentiAssegnati);
     setShowAssignModal(true);
+  };
+
+  const handleOpenDettagliModal = (ordine: OrdineLavoro) => {
+    setSelectedOrdine(ordine);
+    setShowDettagliModal(true);
   };
 
   const handleAssignDipendenti = async () => {
@@ -646,7 +652,10 @@ export default function OrdiniLavoroPage() {
                         Assegna Dipendenti
                       </button>
                     )}
-                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    <button
+                      onClick={() => handleOpenDettagliModal(ordine)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
                       <Eye className="w-5 h-5" />
                       Visualizza Dettagli
                     </button>
@@ -1109,6 +1118,161 @@ export default function OrdiniLavoroPage() {
               </button>
             </div>
           </div>
+        </Modal>
+
+        {/* Modal Dettagli Ordine */}
+        <Modal
+          isOpen={showDettagliModal}
+          onClose={() => {
+            setShowDettagliModal(false);
+            setSelectedOrdine(null);
+          }}
+          title={`Dettagli Ordine - ${selectedOrdine?.numeroOrdine || ''}`}
+          size="xl"
+        >
+          {selectedOrdine && (
+            <div className="space-y-6">
+              {/* Info Principale */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Cliente */}
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Cliente
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-gray-900">
+                      {selectedOrdine.cliente.nome} {selectedOrdine.cliente.cognome}
+                    </p>
+                    {(selectedOrdine.cliente as any).telefono && (
+                      <p className="text-gray-600">📞 {(selectedOrdine.cliente as any).telefono}</p>
+                    )}
+                    {(selectedOrdine.cliente as any).email && (
+                      <p className="text-gray-600">✉️ {(selectedOrdine.cliente as any).email}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Veicolo */}
+                {selectedOrdine.veicolo && (
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
+                      <Car className="w-4 h-4" />
+                      Veicolo
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <p className="font-medium text-gray-900">
+                        {selectedOrdine.veicolo.marca} {selectedOrdine.veicolo.modello}
+                      </p>
+                      <p className="text-gray-600">🚗 {selectedOrdine.veicolo.targa}</p>
+                      {selectedOrdine.veicolo.colore && (
+                        <p className="text-gray-600">🎨 {selectedOrdine.veicolo.colore}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Descrizione */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Descrizione Lavoro</h4>
+                <p className="text-gray-700">{selectedOrdine.descrizione}</p>
+              </div>
+
+              {/* Stato e Date */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 mb-1">Stato</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                    selectedOrdine.stato === 'completato' ? 'bg-green-100 text-green-800' :
+                    selectedOrdine.stato === 'in_corso' ? 'bg-blue-100 text-blue-800' :
+                    selectedOrdine.stato === 'in_attesa' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedOrdine.stato.replace('_', ' ').toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 mb-1">Priorità</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                    selectedOrdine.priorita === 'alta' ? 'bg-red-100 text-red-800' :
+                    selectedOrdine.priorita === 'media' ? 'bg-orange-100 text-orange-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedOrdine.priorita.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 mb-1">Costo Stimato</p>
+                  <p className="text-xl font-bold text-green-600">
+                    €{selectedOrdine.costoStimato.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 mb-1">Data Inizio</p>
+                  <p className="font-medium text-gray-900">
+                    {new Date(selectedOrdine.dataInizio).toLocaleDateString('it-IT')}
+                  </p>
+                </div>
+
+                {selectedOrdine.dataScadenza && (
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">Data Scadenza</p>
+                    <p className="font-medium text-gray-900">
+                      {new Date(selectedOrdine.dataScadenza).toLocaleDateString('it-IT')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Dipendenti Assegnati */}
+              {selectedOrdine.dipendentiAssegnati && selectedOrdine.dipendentiAssegnati.length > 0 && (
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Dipendenti Assegnati
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedOrdine.dipendentiAssegnati.map((dipId) => {
+                      const dip = dipendenti.find(d => d.id === dipId);
+                      return dip ? (
+                        <span key={dipId} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                          {dip.nome} {dip.cognome}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Note */}
+              {selectedOrdine.note && (
+                <div className="bg-yellow-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-yellow-900 mb-2">Note</h4>
+                  <p className="text-gray-700 text-sm">{selectedOrdine.note}</p>
+                </div>
+              )}
+
+              {/* Bottone Chiudi */}
+              <div className="flex justify-end pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setShowDettagliModal(false);
+                    setSelectedOrdine(null);
+                  }}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          )}
         </Modal>
 
         {/* Toast Notification */}
