@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
     const {
       clienteId,
       veicoloId,
+      preventivoId, // NUOVO: campo per collegare preventivo
       descrizione,
       stato,
       priorita,
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
         numero_ordine: numeroOrdine,
         cliente_id: clienteId,
         veicolo_id: veicoloId || null,
+        preventivo_id: preventivoId || null, // NUOVO: collega preventivo se fornito
         descrizione,
         stato: stato || 'in_attesa',
         priorita: priorita || 'media',

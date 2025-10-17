@@ -61,6 +61,7 @@ export default function OrdiniLavoroPage() {
   const [ordini, setOrdini] = useState<OrdineLavoro[]>([]);
   const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
   const [clienti, setClienti] = useState<any[]>([]);
+  const [preventivi, setPreventivi] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroStato, setFiltroStato] = useState<string>('tutti');
@@ -74,6 +75,7 @@ export default function OrdiniLavoroPage() {
   const [clienteMode, setClienteMode] = useState<'select' | 'new'>('select');
   const [formData, setFormData] = useState({
     clienteId: '',
+    preventivoId: '', // NUOVO: campo per collegare preventivo
     nuovoCliente: {
       nome: '',
       cognome: '',
@@ -101,6 +103,7 @@ export default function OrdiniLavoroPage() {
     fetchOrdini();
     fetchDipendenti();
     fetchClienti();
+    fetchPreventivi();
   }, []);
 
   const fetchClienti = async () => {
@@ -124,6 +127,20 @@ export default function OrdiniLavoroPage() {
       }
     } catch (error) {
       console.error('Errore nel caricamento dipendenti:', error);
+    }
+  };
+
+  const fetchPreventivi = async () => {
+    try {
+      const res = await fetch('/api/preventivi', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        // Filtra solo preventivi accettati
+        const preventiviDisponibili = data.filter((p: any) => p.stato === 'accettato');
+        setPreventivi(preventiviDisponibili);
+      }
+    } catch (error) {
+      console.error('Errore nel caricamento preventivi:', error);
     }
   };
 
@@ -315,6 +332,7 @@ export default function OrdiniLavoroPage() {
         body: JSON.stringify({
           clienteId: formData.clienteId,
           veicoloId: null, // Nessun veicolo
+          preventivoId: formData.preventivoId || null, // NUOVO: collega preventivo se selezionato
           descrizione: formData.descrizione,
           priorita: formData.priorita,
           dataInizio: formData.dataInizio,
@@ -335,6 +353,7 @@ export default function OrdiniLavoroPage() {
       // Reset form
       setFormData({
         clienteId: '',
+        preventivoId: '', // NUOVO: reset campo preventivo
         nuovoCliente: {
           nome: '',
           cognome: '',
@@ -878,6 +897,28 @@ export default function OrdiniLavoroPage() {
                 placeholder="Descrivi il lavoro da eseguire..."
                 required
               />
+            </div>
+
+            {/* Collega Preventivo (OPZIONALE) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                📋 Collega a Preventivo (opzionale)
+              </label>
+              <select
+                value={formData.preventivoId}
+                onChange={(e) => setFormData({ ...formData, preventivoId: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Nessun preventivo --</option>
+                {preventivi.map(preventivo => (
+                  <option key={preventivo.id} value={preventivo.id}>
+                    {preventivo.numeroPreventivo} - {preventivo.titolo} ({preventivo.cliente?.nome} {preventivo.cliente?.cognome}) - €{preventivo.importoTotale}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Se selezioni un preventivo, il costo stimato verrà preso da lì
+              </p>
             </div>
 
             {/* Priorità e Costo */}
