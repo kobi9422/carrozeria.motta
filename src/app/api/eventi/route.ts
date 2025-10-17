@@ -21,23 +21,12 @@ export async function GET(request: NextRequest) {
       .from('eventi')
       .select(`
         *,
-        cliente:clienti!eventi_cliente_id_fkey (
+        cliente:clienti (
           id,
           nome,
           cognome,
           email,
           telefono
-        ),
-        veicolo:veicoli!eventi_veicolo_id_fkey (
-          id,
-          marca,
-          modello,
-          targa
-        ),
-        createdBy:users!eventi_created_by_fkey (
-          id,
-          nome,
-          cognome
         )
       `)
       .order('data_inizio', { ascending: true });
@@ -85,12 +74,9 @@ export async function POST(request: NextRequest) {
       dataFine,
       oraInizio,
       oraFine,
-      tuttoIlGiorno,
       clienteId,
-      veicoloId,
-      ordineLavoroId,
-      note,
-      colore
+      ordineId,
+      note
     } = body;
 
     // Validazione
@@ -102,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validazione tipo
-    const tipiValidi = ['ordine', 'appuntamento', 'scadenza', 'altro'];
+    const tipiValidi = ['appuntamento', 'scadenza', 'altro'];
     if (!tipiValidi.includes(tipo)) {
       return NextResponse.json(
         { error: `Tipo non valido. Valori ammessi: ${tipiValidi.join(', ')}` },
@@ -123,35 +109,19 @@ export async function POST(request: NextRequest) {
         data_fine: dataFine || null,
         ora_inizio: oraInizio || null,
         ora_fine: oraFine || null,
-        tutto_il_giorno: tuttoIlGiorno || false,
         cliente_id: clienteId || null,
-        veicolo_id: veicoloId || null,
-        ordine_lavoro_id: ordineLavoroId || null,
+        ordine_id: ordineId || null,
         note: note || null,
-        colore: colore || '#3B82F6',
-        created_by: user.id,
-        created_at: now,
         updated_at: now
       })
       .select(`
         *,
-        cliente:clienti!eventi_cliente_id_fkey (
+        cliente:clienti (
           id,
           nome,
           cognome,
           email,
           telefono
-        ),
-        veicolo:veicoli!eventi_veicolo_id_fkey (
-          id,
-          marca,
-          modello,
-          targa
-        ),
-        createdBy:users!eventi_created_by_fkey (
-          id,
-          nome,
-          cognome
         )
       `)
       .single();
