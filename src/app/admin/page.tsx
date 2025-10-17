@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { TimerAttivi } from '@/components/TimerAttivi';
 import Link from 'next/link';
 import {
   Wrench,
@@ -121,6 +122,9 @@ export default function AdminDashboard() {
     <ProtectedRoute requiredRole="admin">
       <DashboardLayout title="Dashboard Admin">
         <div className="space-y-6">
+          {/* Timer Attivi in Tempo Reale */}
+          <TimerAttivi />
+
           {/* Card Statistiche Principali */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Ordini Attivi */}

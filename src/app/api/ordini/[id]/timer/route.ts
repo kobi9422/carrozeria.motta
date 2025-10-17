@@ -34,17 +34,18 @@ export async function POST(
       return NextResponse.json({ error: 'Ordine non trovato' }, { status: 404 });
     }
 
-    // Verifica che il dipendente non abbia già un timer attivo
-    const { data: timerAttivo } = await supabaseServer
+    // Verifica che non ci sia già un timer attivo per QUESTO SPECIFICO ordine
+    const { data: timerAttivoOrdine } = await supabaseServer
       .from('ordini_lavoro_sessioni')
-      .select('id, ordine_lavoro_id')
+      .select('id')
       .eq('user_id', userId)
+      .eq('ordine_lavoro_id', params.id)
       .is('end_time', null)
       .single();
 
-    if (timerAttivo) {
+    if (timerAttivoOrdine) {
       return NextResponse.json(
-        { error: 'Hai già un timer attivo. Fermalo prima di iniziarne uno nuovo.' },
+        { error: 'Hai già un timer attivo per questo ordine.' },
         { status: 400 }
       );
     }
