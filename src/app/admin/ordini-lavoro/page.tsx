@@ -1034,7 +1034,7 @@ export default function OrdiniLavoroPage() {
                 <div>
                   <span className="text-gray-600">Veicolo:</span>
                   <p className="font-medium text-gray-900">
-                    {selectedOrdine?.veicolo.marca} {selectedOrdine?.veicolo.modello}
+                    {selectedOrdine?.veicolo ? `${selectedOrdine.veicolo.marca} ${selectedOrdine.veicolo.modello}` : 'Nessun veicolo'}
                   </p>
                 </div>
               </div>
@@ -1172,8 +1172,8 @@ export default function OrdiniLavoroPage() {
                         {selectedOrdine.veicolo.marca} {selectedOrdine.veicolo.modello}
                       </p>
                       <p className="text-gray-600">🚗 {selectedOrdine.veicolo.targa}</p>
-                      {selectedOrdine.veicolo.colore && (
-                        <p className="text-gray-600">🎨 {selectedOrdine.veicolo.colore}</p>
+                      {(selectedOrdine.veicolo as any).colore && (
+                        <p className="text-gray-600">🎨 {(selectedOrdine.veicolo as any).colore}</p>
                       )}
                     </div>
                   </div>

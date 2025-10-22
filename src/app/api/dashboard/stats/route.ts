@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       const { count: ordiniAttivi, error: ordiniAttiviError } = await supabaseServer
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
-        .in('stato', ['in_attesa', 'in_lavorazione']);
+        .in('stato', ['in_attesa', 'in_corso']);
 
       if (ordiniAttiviError) {
         return NextResponse.json({ error: ordiniAttiviError.message }, { status: 500 });
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .eq('dipendente_id', user.id)
-        .in('stato', ['in_attesa', 'in_lavorazione']);
+        .in('stato', ['in_attesa', 'in_corso']);
 
       if (ordiniAssegnatiError) {
         return NextResponse.json({ error: ordiniAssegnatiError.message }, { status: 500 });
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         .from('ordini_lavoro')
         .select('*', { count: 'exact', head: true })
         .eq('dipendente_id', user.id)
-        .eq('stato', 'in_lavorazione');
+        .eq('stato', 'in_corso');
 
       if (ordiniInLavorazioneError) {
         return NextResponse.json({ error: ordiniInLavorazioneError.message }, { status: 500 });
