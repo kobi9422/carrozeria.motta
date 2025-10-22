@@ -21,6 +21,8 @@ export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [clienti, setClienti] = useState<any[]>([]);
@@ -119,8 +121,9 @@ export default function CalendarioPage() {
             date: new Date(evento.dataInizio),
             type: evento.tipo,
             cliente: evento.cliente ? `${evento.cliente.nome} ${evento.cliente.cognome}` : undefined,
-            url: undefined
-          });
+            url: undefined,
+            eventoData: evento // Salva i dati completi dell'evento
+          } as any);
         }
       });
 
@@ -173,6 +176,98 @@ export default function CalendarioPage() {
     } catch (error: any) {
       console.error('Errore nella creazione evento:', error);
       alert(error.message || 'Errore nella creazione dell\'evento');
+    }
+  };
+
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+
+    try {
+      const res = await fetch(`/api/eventi/${selectedEvent.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          titolo: formData.titolo,
+          tipo: formData.tipo,
+          dataInizio: formData.data + (formData.ora ? `T${formData.ora}:00` : 'T00:00:00'),
+          clienteId: formData.clienteId || null,
+          note: formData.note || null,
+          tuttoIlGiorno: !formData.ora
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore nell\'aggiornamento dell\'evento');
+      }
+
+      // Reset
+      setFormData({
+        titolo: '',
+        tipo: 'appuntamento',
+        data: '',
+        ora: '',
+        clienteId: '',
+        note: ''
+      });
+      setSelectedEvent(null);
+      setShowEditModal(false);
+      fetchEvents();
+
+      alert('Evento aggiornato con successo!');
+    } catch (error: any) {
+      console.error('Errore nell\'aggiornamento evento:', error);
+      alert(error.message || 'Errore nell\'aggiornamento dell\'evento');
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!selectedEvent) return;
+    if (!confirm('Sei sicuro di voler eliminare questo evento?')) return;
+
+    try {
+      const res = await fetch(`/api/eventi/${selectedEvent.id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore nell\'eliminazione dell\'evento');
+      }
+
+      setSelectedEvent(null);
+      setShowEditModal(false);
+      fetchEvents();
+
+      alert('Evento eliminato con successo!');
+    } catch (error: any) {
+      console.error('Errore nell\'eliminazione evento:', error);
+      alert(error.message || 'Errore nell\'eliminazione dell\'evento');
+    }
+  };
+
+  const handleEventClick = (event: any) => {
+    // Se è un evento personalizzato (creato dall'utente), apri modal di modifica
+    if (event.id.startsWith('evento-') && event.eventoData) {
+      const eventoData = event.eventoData;
+      const dataInizio = new Date(eventoData.dataInizio);
+
+      setSelectedEvent(eventoData);
+      setFormData({
+        titolo: eventoData.titolo,
+        tipo: eventoData.tipo,
+        data: dataInizio.toISOString().split('T')[0],
+        ora: eventoData.tuttoIlGiorno ? '' : dataInizio.toTimeString().slice(0, 5),
+        clienteId: eventoData.clienteId || '',
+        note: eventoData.note || ''
+      });
+      setShowEditModal(true);
+    } else if (event.url) {
+      // Se è un evento da ordine/preventivo/fattura, vai alla pagina
+      router.push(event.url);
     }
   };
 
@@ -348,7 +443,7 @@ export default function CalendarioPage() {
                           title={event.title}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (event.url) router.push(event.url);
+                            handleEventClick(event);
                           }}
                         >
                           {event.title}
@@ -525,6 +620,148 @@ export default function CalendarioPage() {
               >
                 Crea Evento
               </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Modal Modifica Evento */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedEvent(null);
+            setFormData({
+              titolo: '',
+              tipo: 'appuntamento',
+              data: '',
+              ora: '',
+              clienteId: '',
+              note: ''
+            });
+          }}
+          title="Modifica Evento"
+          size="md"
+        >
+          <form onSubmit={handleUpdateEvent} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Titolo Evento *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.titolo}
+                onChange={(e) => setFormData({ ...formData, titolo: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Es: Riparazione Fiat Punto"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo Evento *
+              </label>
+              <select
+                value={formData.tipo}
+                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="appuntamento">Appuntamento</option>
+                <option value="scadenza">Scadenza</option>
+                <option value="altro">Altro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Data *
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.data}
+                onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ora (opzionale)
+              </label>
+              <input
+                type="time"
+                value={formData.ora}
+                onChange={(e) => setFormData({ ...formData, ora: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Cliente (opzionale)
+              </label>
+              <select
+                value={formData.clienteId}
+                onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Seleziona cliente...</option>
+                {clienti.map((cliente) => (
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nome} {cliente.cognome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Note (opzionali)
+              </label>
+              <textarea
+                rows={3}
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Note aggiuntive..."
+              />
+            </div>
+
+            <div className="flex justify-between gap-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={handleDeleteEvent}
+                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+              >
+                Elimina
+              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedEvent(null);
+                    setFormData({
+                      titolo: '',
+                      tipo: 'appuntamento',
+                      data: '',
+                      ora: '',
+                      clienteId: '',
+                      note: ''
+                    });
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Salva Modifiche
+                </button>
+              </div>
             </div>
           </form>
         </Modal>
