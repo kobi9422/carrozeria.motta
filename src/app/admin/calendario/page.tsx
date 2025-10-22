@@ -22,6 +22,7 @@ export default function CalendarioPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDayEventsModal, setShowDayEventsModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,7 +226,6 @@ export default function CalendarioPage() {
 
   const handleDeleteEvent = async () => {
     if (!selectedEvent) return;
-    if (!confirm('Sei sicuro di voler eliminare questo evento?')) return;
 
     try {
       const res = await fetch(`/api/eventi/${selectedEvent.id}`, {
@@ -240,6 +240,7 @@ export default function CalendarioPage() {
 
       setSelectedEvent(null);
       setShowEditModal(false);
+      setShowDayEventsModal(false);
       fetchEvents();
 
       alert('Evento eliminato con successo!');
@@ -430,7 +431,12 @@ export default function CalendarioPage() {
                     className={`aspect-square border rounded-lg p-2 cursor-pointer hover:bg-gray-50 ${
                       isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                     }`}
-                    onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
+                    onClick={() => {
+                      setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+                      if (dayEvents.length > 0) {
+                        setShowDayEventsModal(true);
+                      }
+                    }}
                   >
                     <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
                       {day}
@@ -622,6 +628,98 @@ export default function CalendarioPage() {
               </button>
             </div>
           </form>
+        </Modal>
+
+        {/* Modal Eventi del Giorno */}
+        <Modal
+          isOpen={showDayEventsModal}
+          onClose={() => {
+            setShowDayEventsModal(false);
+            setSelectedDate(null);
+          }}
+          title={selectedDate ? `Eventi del ${selectedDate.toLocaleDateString('it-IT')}` : 'Eventi'}
+          size="md"
+        >
+          <div className="space-y-3">
+            {selectedDate && getEventsForDate(selectedDate.getDate()).length === 0 && (
+              <p className="text-gray-500 text-center py-8">Nessun evento in questa data</p>
+            )}
+
+            {selectedDate && getEventsForDate(selectedDate.getDate()).map((event: any) => (
+              <div
+                key={event.id}
+                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${eventTypeColors[event.type]}`}></div>
+                      <h3 className="font-semibold text-gray-900">{event.title}</h3>
+                    </div>
+                    {event.cliente && (
+                      <p className="text-sm text-gray-600">👤 {event.cliente}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      {event.type === 'ordine' && '📋 Ordine di Lavoro'}
+                      {event.type === 'preventivo' && '📄 Preventivo'}
+                      {event.type === 'fattura' && '💰 Fattura'}
+                      {event.type === 'appuntamento' && '📅 Appuntamento'}
+                      {event.type === 'scadenza' && '⏰ Scadenza'}
+                      {event.type === 'altro' && '📌 Altro'}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {/* Mostra bottoni solo per eventi personalizzati */}
+                    {event.id.startsWith('evento-') && event.eventoData && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowDayEventsModal(false);
+                            handleEventClick(event);
+                          }}
+                          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          Modifica
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Sei sicuro di voler eliminare questo evento?')) {
+                              setSelectedEvent(event.eventoData);
+                              await handleDeleteEvent();
+                              setShowDayEventsModal(false);
+                            }
+                          }}
+                          className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                          Elimina
+                        </button>
+                      </>
+                    )}
+
+                    {/* Per eventi di sistema, mostra bottone "Vai a" */}
+                    {event.url && (
+                      <button
+                        onClick={() => router.push(event.url)}
+                        className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                      >
+                        Vai a →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => setShowDayEventsModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
         </Modal>
 
         {/* Modal Modifica Evento */}
