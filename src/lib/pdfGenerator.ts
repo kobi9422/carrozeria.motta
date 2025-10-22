@@ -34,6 +34,7 @@ interface VoceDocumento {
   quantita: number;
   prezzoUnitario: number;
   totale: number;
+  aliquotaIva?: number; // Percentuale IVA (0, 22, ecc.)
 }
 
 interface Preventivo {
@@ -147,10 +148,46 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
     }
   });
   
-  // Totale
+  // Riepilogo IVA
   yPos += 5;
   doc.line(20, yPos, 190, yPos);
   yPos += 7;
+
+  // Raggruppa voci per aliquota IVA
+  const vociPerIva = preventivo.voci.reduce((acc: any, voce) => {
+    const aliquota = voce.aliquotaIva || 22;
+    if (!acc[aliquota]) {
+      acc[aliquota] = { imponibile: 0, iva: 0 };
+    }
+    const imponibile = voce.totale / (1 + aliquota / 100);
+    const iva = voce.totale - imponibile;
+    acc[aliquota].imponibile += imponibile;
+    acc[aliquota].iva += iva;
+    return acc;
+  }, {});
+
+  let totaleImponibile = 0;
+  let totaleIva = 0;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+
+  // Mostra imponibile e IVA per ogni aliquota
+  Object.keys(vociPerIva).sort((a, b) => Number(b) - Number(a)).forEach((aliquota) => {
+    const { imponibile, iva } = vociPerIva[aliquota];
+    totaleImponibile += imponibile;
+    totaleIva += iva;
+
+    doc.text(`Imponibile ${aliquota}%:`, 140, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, 190, yPos, { align: 'right' });
+    yPos += 5;
+    doc.text(`IVA ${aliquota}%:`, 140, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, 190, yPos, { align: 'right' });
+    yPos += 5;
+  });
+
+  // Totale finale
+  yPos += 2;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('TOTALE:', 140, yPos);
@@ -256,21 +293,46 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     }
   });
   
-  // Calcolo IVA
+  // Riepilogo IVA
   yPos += 5;
   doc.line(20, yPos, 190, yPos);
   yPos += 7;
-  
-  const imponibile = fattura.importoTotale / 1.22;
-  const iva = fattura.importoTotale - imponibile;
-  
+
+  // Raggruppa voci per aliquota IVA
+  const vociPerIva = fattura.voci.reduce((acc: any, voce) => {
+    const aliquota = voce.aliquotaIva || 22;
+    if (!acc[aliquota]) {
+      acc[aliquota] = { imponibile: 0, iva: 0 };
+    }
+    const imponibile = voce.totale / (1 + aliquota / 100);
+    const iva = voce.totale - imponibile;
+    acc[aliquota].imponibile += imponibile;
+    acc[aliquota].iva += iva;
+    return acc;
+  }, {});
+
+  let totaleImponibile = 0;
+  let totaleIva = 0;
+
   doc.setFont('helvetica', 'normal');
-  doc.text('Imponibile:', 140, yPos);
-  doc.text(`€ ${imponibile.toFixed(2)}`, 190, yPos, { align: 'right' });
-  yPos += 6;
-  doc.text('IVA 22%:', 140, yPos);
-  doc.text(`€ ${iva.toFixed(2)}`, 190, yPos, { align: 'right' });
-  yPos += 6;
+  doc.setFontSize(10);
+
+  // Mostra imponibile e IVA per ogni aliquota
+  Object.keys(vociPerIva).sort((a, b) => Number(b) - Number(a)).forEach((aliquota) => {
+    const { imponibile, iva } = vociPerIva[aliquota];
+    totaleImponibile += imponibile;
+    totaleIva += iva;
+
+    doc.text(`Imponibile ${aliquota}%:`, 140, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, 190, yPos, { align: 'right' });
+    yPos += 5;
+    doc.text(`IVA ${aliquota}%:`, 140, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, 190, yPos, { align: 'right' });
+    yPos += 5;
+  });
+
+  // Totale finale
+  yPos += 2;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('TOTALE:', 140, yPos);
