@@ -163,7 +163,7 @@ export default function OrdiniLavoroPage() {
 
   const handleOpenAssignModal = (ordine: OrdineLavoro) => {
     setSelectedOrdine(ordine);
-    setSelectedDipendenti(ordine.dipendentiAssegnati);
+    setSelectedDipendenti(ordine.dipendentiAssegnati || []);
     setShowAssignModal(true);
   };
 
@@ -178,6 +178,11 @@ export default function OrdiniLavoroPage() {
     try {
       setLoading(true);
 
+      console.log('Assegnazione dipendenti:', {
+        ordineId: selectedOrdine.id,
+        dipendentiIds: selectedDipendenti
+      });
+
       // Chiama API per aggiornare dipendenti assegnati
       const res = await fetch(`/api/ordini/${selectedOrdine.id}`, {
         method: 'PATCH',
@@ -188,7 +193,9 @@ export default function OrdiniLavoroPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Errore nell\'assegnazione dipendenti');
+        const errorData = await res.json();
+        console.error('Errore API:', errorData);
+        throw new Error(errorData.error || 'Errore nell\'assegnazione dipendenti');
       }
 
       const ordineAggiornato = await res.json();
