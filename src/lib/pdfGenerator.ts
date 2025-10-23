@@ -14,6 +14,7 @@ interface Impostazioni {
   banca: string;
   condizioniPagamento: string;
   noteLegaliFattura: string;
+  firmaUrl?: string; // URL della firma digitale (base64)
 }
 
 interface Cliente {
@@ -317,6 +318,15 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
 
+    // Firma digitale (se presente)
+    if (impostazioni.firmaUrl) {
+      try {
+        doc.addImage(impostazioni.firmaUrl, 'PNG', 20, 265, 50, 15);
+      } catch (error) {
+        console.error('Errore nell\'aggiunta della firma:', error);
+      }
+    }
+
     // Linea separatrice footer
     doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.setLineWidth(0.5);
@@ -573,6 +583,15 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+
+    // Firma digitale (se presente)
+    if (impostazioni.firmaUrl) {
+      try {
+        doc.addImage(impostazioni.firmaUrl, 'PNG', 20, 265, 50, 15);
+      } catch (error) {
+        console.error('Errore nell\'aggiunta della firma:', error);
+      }
+    }
 
     // Linea separatrice footer
     doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);

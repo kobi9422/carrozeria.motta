@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Settings, Building2, CreditCard, FileText, Save, AlertCircle, Download, Database } from 'lucide-react';
+import { Settings, Building2, CreditCard, FileText, Save, AlertCircle, Download, Database, Signature, Upload, X } from 'lucide-react';
 
 export default function ImpostazioniPage() {
   return (
@@ -91,6 +91,34 @@ function ImpostazioniContent() {
     } finally {
       setBackingUp(false);
     }
+  };
+
+  const handleUploadFirma = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload-firma', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) throw new Error('Errore nel caricamento della firma');
+      const data = await res.json();
+
+      setImpostazioni({ ...impostazioni, firmaUrl: data.firmaUrl });
+      setToast({ message: 'Firma caricata con successo!', type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    }
+  };
+
+  const handleRemoveFirma = () => {
+    setImpostazioni({ ...impostazioni, firmaUrl: null });
+    setToast({ message: 'Firma rimossa', type: 'success' });
   };
 
   if (loading) {
@@ -303,6 +331,55 @@ function ImpostazioniContent() {
                 placeholder="Es: Il preventivo è valido per 30 giorni dalla data di emissione..."
               />
             </div>
+          </div>
+        </div>
+
+        {/* Firma Digitale */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Signature className="w-5 h-5 text-indigo-600" />
+            Firma Digitale
+          </h3>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Carica la tua firma digitale. Apparirà automaticamente in fondo a tutti i preventivi e le fatture.
+            </p>
+
+            {impostazioni?.firmaUrl ? (
+              <div className="space-y-3">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Firma Attuale:</p>
+                  <img
+                    src={impostazioni.firmaUrl}
+                    alt="Firma"
+                    className="max-h-20 max-w-xs"
+                  />
+                </div>
+                <button
+                  onClick={handleRemoveFirma}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Rimuovi Firma
+                </button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+                <label className="cursor-pointer">
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-8 h-8 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700">Clicca per caricare la firma</span>
+                    <span className="text-xs text-gray-500">PNG, JPG (max 5MB)</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadFirma}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
           </div>
         </div>
 
