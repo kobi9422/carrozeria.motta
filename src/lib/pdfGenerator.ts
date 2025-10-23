@@ -159,11 +159,13 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   doc.rect(20, yPos - 5, 170, 7, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('Descrizione', 22, yPos);
-  doc.text('Q.tà', 120, yPos);
-  doc.text('Prezzo Unit.', 140, yPos);
+  doc.text('Q.tà', 90, yPos);
+  doc.text('Prezzo Unit.', 110, yPos);
+  doc.text('Imponibile', 140, yPos);
+  doc.text('IVA', 165, yPos);
   doc.text('Totale', 188, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
@@ -171,6 +173,11 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
 
   let rowCount = 0;
   preventivo.voci.forEach((voce) => {
+    // Calcola imponibile e IVA per questa voce
+    const aliquota = voce.aliquotaIva || 22;
+    const imponibile = voce.totale / (1 + aliquota / 100);
+    const iva = voce.totale - imponibile;
+
     // Sfondo alternato per le righe
     if (rowCount % 2 === 0) {
       doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
@@ -178,13 +185,15 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
     }
 
     doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    const descLines = doc.splitTextToSize(voce.descrizione, 95);
+    const descLines = doc.splitTextToSize(voce.descrizione, 65);
     doc.text(descLines, 22, yPos);
-    doc.text(voce.quantita.toString(), 120, yPos);
-    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 140, yPos);
+    doc.text(voce.quantita.toString(), 90, yPos);
+    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 110, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, 140, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, 165, yPos);
     doc.text(`€ ${voce.totale.toFixed(2)}`, 188, yPos, { align: 'right' });
 
     yPos += Math.max(descLines.length * 4, 6);
@@ -389,11 +398,13 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   doc.rect(20, yPos - 5, 170, 7, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('Descrizione', 22, yPos);
-  doc.text('Q.tà', 120, yPos);
-  doc.text('Prezzo Unit.', 140, yPos);
+  doc.text('Q.tà', 90, yPos);
+  doc.text('Prezzo Unit.', 110, yPos);
+  doc.text('Imponibile', 140, yPos);
+  doc.text('IVA', 165, yPos);
   doc.text('Totale', 188, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
@@ -401,6 +412,11 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
 
   let rowCount = 0;
   fattura.voci.forEach((voce) => {
+    // Calcola imponibile e IVA per questa voce
+    const aliquota = voce.aliquotaIva || 22;
+    const imponibile = voce.totale / (1 + aliquota / 100);
+    const iva = voce.totale - imponibile;
+
     // Sfondo alternato per le righe
     if (rowCount % 2 === 0) {
       doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
@@ -408,13 +424,15 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     }
 
     doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    const descLines = doc.splitTextToSize(voce.descrizione, 95);
+    const descLines = doc.splitTextToSize(voce.descrizione, 65);
     doc.text(descLines, 22, yPos);
-    doc.text(voce.quantita.toString(), 120, yPos);
-    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 140, yPos);
+    doc.text(voce.quantita.toString(), 90, yPos);
+    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 110, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, 140, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, 165, yPos);
     doc.text(`€ ${voce.totale.toFixed(2)}`, 188, yPos, { align: 'right' });
 
     yPos += Math.max(descLines.length * 4, 6);
