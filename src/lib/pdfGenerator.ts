@@ -272,7 +272,29 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   doc.text(`€ ${preventivo.importoTotale.toFixed(2)}`, 188, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-  
+
+  // ===== MODALITÀ PAGAMENTO =====
+  yPos += 12;
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+  doc.rect(20, yPos - 5, 170, 1, 'F');
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Modalità di Pagamento:', 20, yPos);
+  yPos += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(impostazioni.condizioniPagamento, 20, yPos);
+  if (impostazioni.iban) {
+    yPos += 4;
+    doc.text(`IBAN: ${impostazioni.iban}`, 20, yPos);
+  }
+  if (impostazioni.banca) {
+    yPos += 4;
+    doc.text(`Banca: ${impostazioni.banca}`, 20, yPos);
+  }
+
   // ===== NOTE =====
   if (preventivo.note) {
     yPos += 12;
