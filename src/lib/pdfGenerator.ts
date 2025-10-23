@@ -62,96 +62,149 @@ interface Fattura {
 
 export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni: Impostazioni) {
   const doc = new jsPDF();
-  
-  // Intestazione Azienda
-  doc.setFontSize(20);
+  const primaryColor = [41, 128, 185]; // Blu professionale
+  const lightGray = [245, 245, 245];
+  const darkGray = [80, 80, 80];
+
+  // ===== HEADER AZIENDA =====
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(0, 0, 210, 50, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text(impostazioni.nomeAzienda, 20, 20);
-  
+  doc.text(impostazioni.nomeAzienda, 20, 18);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${impostazioni.indirizzo} | ${impostazioni.cap} ${impostazioni.citta}`, 20, 28);
+  doc.text(`Tel: ${impostazioni.telefono} | Email: ${impostazioni.email}`, 20, 33);
+  if (impostazioni.partitaIva) doc.text(`P.IVA: ${impostazioni.partitaIva}`, 20, 38);
+
+  // Titolo Documento a destra
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PREVENTIVO', 150, 22);
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${impostazioni.indirizzo}`, 20, 28);
-  doc.text(`${impostazioni.cap} ${impostazioni.citta} (${impostazioni.provincia})`, 20, 33);
-  doc.text(`Tel: ${impostazioni.telefono}`, 20, 38);
-  doc.text(`Email: ${impostazioni.email}`, 20, 43);
-  if (impostazioni.partitaIva) doc.text(`P.IVA: ${impostazioni.partitaIva}`, 20, 48);
-  
-  // Titolo Documento
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PREVENTIVO', 150, 20);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`N. ${preventivo.numeroPreventivo}`, 150, 28);
-  doc.text(`Data: ${new Date(preventivo.dataCreazione).toLocaleDateString('it-IT')}`, 150, 33);
+  doc.text(`N. ${preventivo.numeroPreventivo}`, 150, 32);
+  doc.text(`Data: ${new Date(preventivo.dataCreazione).toLocaleDateString('it-IT')}`, 150, 38);
   if (preventivo.dataScadenza) {
-    doc.text(`Scadenza: ${new Date(preventivo.dataScadenza).toLocaleDateString('it-IT')}`, 150, 38);
+    doc.text(`Scadenza: ${new Date(preventivo.dataScadenza).toLocaleDateString('it-IT')}`, 150, 44);
+  }
+
+  // Reset colore testo
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+
+  // ===== SEZIONE CLIENTE =====
+  let yPos = 60;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', 20, yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${preventivo.cliente.nome} ${preventivo.cliente.cognome}`, 20, yPos);
+  yPos += 5;
+  if (preventivo.cliente.indirizzo) {
+    doc.text(preventivo.cliente.indirizzo, 20, yPos);
+    yPos += 5;
+  }
+  if (preventivo.cliente.citta) {
+    doc.text(`${preventivo.cliente.cap || ''} ${preventivo.cliente.citta} ${preventivo.cliente.provincia ? '(' + preventivo.cliente.provincia + ')' : ''}`, 20, yPos);
+    yPos += 5;
+  }
+  if (preventivo.cliente.telefono) {
+    doc.text(`Tel: ${preventivo.cliente.telefono}`, 20, yPos);
+    yPos += 5;
+  }
+  if (preventivo.cliente.email) {
+    doc.text(`Email: ${preventivo.cliente.email}`, 20, yPos);
+    yPos += 5;
+  }
+  if (preventivo.cliente.codiceFiscale) {
+    doc.text(`CF: ${preventivo.cliente.codiceFiscale}`, 20, yPos);
+    yPos += 5;
+  }
+  if (preventivo.cliente.partitaIva) {
+    doc.text(`P.IVA: ${preventivo.cliente.partitaIva}`, 20, yPos);
+    yPos += 5;
   }
   
-  // Dati Cliente
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Cliente:', 20, 65);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${preventivo.cliente.nome} ${preventivo.cliente.cognome}`, 20, 72);
-  if (preventivo.cliente.indirizzo) doc.text(preventivo.cliente.indirizzo, 20, 77);
-  if (preventivo.cliente.citta) doc.text(`${preventivo.cliente.cap || ''} ${preventivo.cliente.citta} ${preventivo.cliente.provincia ? '(' + preventivo.cliente.provincia + ')' : ''}`, 20, 82);
-  if (preventivo.cliente.telefono) doc.text(`Tel: ${preventivo.cliente.telefono}`, 20, 87);
-  if (preventivo.cliente.email) doc.text(`Email: ${preventivo.cliente.email}`, 20, 92);
-  if (preventivo.cliente.codiceFiscale) doc.text(`CF: ${preventivo.cliente.codiceFiscale}`, 20, 97);
-  if (preventivo.cliente.partitaIva) doc.text(`P.IVA: ${preventivo.cliente.partitaIva}`, 20, 102);
-  
-  // Titolo e Descrizione
-  let yPos = 115;
+  // ===== TITOLO E DESCRIZIONE =====
+  yPos += 8;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(preventivo.titolo, 20, yPos);
-  
+
   if (preventivo.descrizione) {
     yPos += 7;
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     const descLines = doc.splitTextToSize(preventivo.descrizione, 170);
     doc.text(descLines, 20, yPos);
-    yPos += descLines.length * 5;
+    yPos += descLines.length * 4;
   }
-  
-  // Tabella Voci
-  yPos += 10;
+
+  // ===== TABELLA VOCI =====
+  yPos += 8;
+
+  // Intestazione tabella con sfondo colorato
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(20, yPos - 5, 170, 7, 'F');
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Descrizione', 20, yPos);
+  doc.text('Descrizione', 22, yPos);
   doc.text('Q.tà', 120, yPos);
   doc.text('Prezzo Unit.', 140, yPos);
-  doc.text('Totale', 175, yPos, { align: 'right' });
-  
-  yPos += 2;
-  doc.line(20, yPos, 190, yPos);
-  
-  yPos += 7;
-  doc.setFont('helvetica', 'normal');
-  
+  doc.text('Totale', 188, yPos, { align: 'right' });
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+  yPos += 8;
+
+  let rowCount = 0;
   preventivo.voci.forEach((voce) => {
+    // Sfondo alternato per le righe
+    if (rowCount % 2 === 0) {
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.rect(20, yPos - 4, 170, 6, 'F');
+    }
+
+    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
     const descLines = doc.splitTextToSize(voce.descrizione, 95);
-    doc.text(descLines, 20, yPos);
+    doc.text(descLines, 22, yPos);
     doc.text(voce.quantita.toString(), 120, yPos);
     doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 140, yPos);
-    doc.text(`€ ${voce.totale.toFixed(2)}`, 190, yPos, { align: 'right' });
-    yPos += Math.max(descLines.length * 5, 7);
-    
+    doc.text(`€ ${voce.totale.toFixed(2)}`, 188, yPos, { align: 'right' });
+
+    yPos += Math.max(descLines.length * 4, 6);
+    rowCount++;
+
     if (yPos > 250) {
       doc.addPage();
       yPos = 20;
+      rowCount = 0;
     }
   });
-  
-  // Riepilogo IVA
-  yPos += 5;
+
+  // Linea sotto tabella
+  yPos += 2;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
   doc.line(20, yPos, 190, yPos);
-  yPos += 7;
+  
+  // ===== RIEPILOGO IVA =====
+  yPos += 8;
 
   // Raggruppa voci per aliquota IVA
   const vociPerIva = preventivo.voci.reduce((acc: any, voce) => {
@@ -169,8 +222,14 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   let totaleImponibile = 0;
   let totaleIva = 0;
 
+  // Box riepilogo con bordo
+  const boxStartY = yPos;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(1);
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
 
   // Mostra imponibile e IVA per ogni aliquota
   Object.keys(vociPerIva).sort((a, b) => Number(b) - Number(a)).forEach((aliquota) => {
@@ -178,125 +237,204 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
     totaleImponibile += imponibile;
     totaleIva += iva;
 
-    doc.text(`Imponibile ${aliquota}%:`, 140, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, 190, yPos, { align: 'right' });
+    doc.text(`Imponibile ${aliquota}%:`, 130, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, 188, yPos, { align: 'right' });
     yPos += 5;
-    doc.text(`IVA ${aliquota}%:`, 140, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, 190, yPos, { align: 'right' });
+    doc.text(`IVA ${aliquota}%:`, 130, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, 188, yPos, { align: 'right' });
     yPos += 5;
   });
 
-  // Totale finale
+  // Linea separatrice
   yPos += 2;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.line(130, yPos, 190, yPos);
+
+  // Totale finale con sfondo
+  yPos += 6;
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(130, yPos - 5, 60, 8, 'F');
+
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('TOTALE:', 140, yPos);
-  doc.text(`€ ${preventivo.importoTotale.toFixed(2)}`, 190, yPos, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text('TOTALE:', 132, yPos);
+  doc.text(`€ ${preventivo.importoTotale.toFixed(2)}`, 188, yPos, { align: 'right' });
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   
-  // Note
+  // ===== NOTE =====
   if (preventivo.note) {
-    yPos += 15;
+    yPos += 12;
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(20, yPos - 5, 170, 1, 'F');
+
+    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Note:', 20, yPos);
     yPos += 5;
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
     const noteLines = doc.splitTextToSize(preventivo.note, 170);
     doc.text(noteLines, 20, yPos);
   }
-  
-  // Footer
+
+  // ===== FOOTER =====
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+
+    // Linea separatrice footer
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, 275, 190, 275);
+
+    // Testo footer
+    doc.setTextColor(150, 150, 150);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.text(`Pagina ${i} di ${pageCount}`, 105, 285, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Preventivo generato il ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 20, 282);
+    doc.text(`Pagina ${i} di ${pageCount}`, 105, 282, { align: 'center' });
   }
-  
+
   // Salva PDF
   doc.save(`Preventivo_${preventivo.numeroPreventivo}.pdf`);
 }
 
 export async function generateFatturaPDF(fattura: Fattura, impostazioni: Impostazioni) {
   const doc = new jsPDF();
-  
-  // Intestazione Azienda
-  doc.setFontSize(20);
+  const primaryColor = [41, 128, 185]; // Blu professionale
+  const lightGray = [245, 245, 245];
+  const darkGray = [80, 80, 80];
+
+  // ===== HEADER AZIENDA =====
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(0, 0, 210, 50, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text(impostazioni.nomeAzienda, 20, 20);
-  
+  doc.text(impostazioni.nomeAzienda, 20, 18);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${impostazioni.indirizzo} | ${impostazioni.cap} ${impostazioni.citta}`, 20, 28);
+  doc.text(`Tel: ${impostazioni.telefono} | Email: ${impostazioni.email}`, 20, 33);
+  if (impostazioni.partitaIva) doc.text(`P.IVA: ${impostazioni.partitaIva}`, 20, 38);
+  if (impostazioni.codiceFiscale) doc.text(`CF: ${impostazioni.codiceFiscale}`, 20, 43);
+
+  // Titolo Documento a destra
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FATTURA', 150, 22);
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${impostazioni.indirizzo}`, 20, 28);
-  doc.text(`${impostazioni.cap} ${impostazioni.citta} (${impostazioni.provincia})`, 20, 33);
-  doc.text(`Tel: ${impostazioni.telefono}`, 20, 38);
-  doc.text(`Email: ${impostazioni.email}`, 20, 43);
-  if (impostazioni.partitaIva) doc.text(`P.IVA: ${impostazioni.partitaIva}`, 20, 48);
-  if (impostazioni.codiceFiscale) doc.text(`CF: ${impostazioni.codiceFiscale}`, 20, 53);
-  
-  // Titolo Documento
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FATTURA', 150, 20);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`N. ${fattura.numeroFattura}`, 150, 28);
-  doc.text(`Data Emissione: ${new Date(fattura.dataEmissione).toLocaleDateString('it-IT')}`, 150, 33);
-  doc.text(`Scadenza: ${new Date(fattura.dataScadenza).toLocaleDateString('it-IT')}`, 150, 38);
+  doc.text(`N. ${fattura.numeroFattura}`, 150, 32);
+  doc.text(`Data Emissione: ${new Date(fattura.dataEmissione).toLocaleDateString('it-IT')}`, 150, 38);
+  doc.text(`Scadenza: ${new Date(fattura.dataScadenza).toLocaleDateString('it-IT')}`, 150, 44);
   if (fattura.dataPagamento) {
-    doc.text(`Pagata il: ${new Date(fattura.dataPagamento).toLocaleDateString('it-IT')}`, 150, 43);
+    doc.text(`Pagata il: ${new Date(fattura.dataPagamento).toLocaleDateString('it-IT')}`, 150, 50);
+  }
+
+  // Reset colore testo
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+
+  // ===== SEZIONE CLIENTE =====
+  let yPos = 60;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', 20, yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${fattura.cliente.nome} ${fattura.cliente.cognome}`, 20, yPos);
+  yPos += 5;
+  if (fattura.cliente.indirizzo) {
+    doc.text(fattura.cliente.indirizzo, 20, yPos);
+    yPos += 5;
+  }
+  if (fattura.cliente.citta) {
+    doc.text(`${fattura.cliente.cap || ''} ${fattura.cliente.citta} ${fattura.cliente.provincia ? '(' + fattura.cliente.provincia + ')' : ''}`, 20, yPos);
+    yPos += 5;
+  }
+  if (fattura.cliente.telefono) {
+    doc.text(`Tel: ${fattura.cliente.telefono}`, 20, yPos);
+    yPos += 5;
+  }
+  if (fattura.cliente.email) {
+    doc.text(`Email: ${fattura.cliente.email}`, 20, yPos);
+    yPos += 5;
+  }
+  if (fattura.cliente.codiceFiscale) {
+    doc.text(`CF: ${fattura.cliente.codiceFiscale}`, 20, yPos);
+    yPos += 5;
+  }
+  if (fattura.cliente.partitaIva) {
+    doc.text(`P.IVA: ${fattura.cliente.partitaIva}`, 20, yPos);
+    yPos += 5;
   }
   
-  // Dati Cliente
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Cliente:', 20, 70);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${fattura.cliente.nome} ${fattura.cliente.cognome}`, 20, 77);
-  if (fattura.cliente.indirizzo) doc.text(fattura.cliente.indirizzo, 20, 82);
-  if (fattura.cliente.citta) doc.text(`${fattura.cliente.cap || ''} ${fattura.cliente.citta} ${fattura.cliente.provincia ? '(' + fattura.cliente.provincia + ')' : ''}`, 20, 87);
-  if (fattura.cliente.telefono) doc.text(`Tel: ${fattura.cliente.telefono}`, 20, 92);
-  if (fattura.cliente.email) doc.text(`Email: ${fattura.cliente.email}`, 20, 97);
-  if (fattura.cliente.codiceFiscale) doc.text(`CF: ${fattura.cliente.codiceFiscale}`, 20, 102);
-  if (fattura.cliente.partitaIva) doc.text(`P.IVA: ${fattura.cliente.partitaIva}`, 20, 107);
-  
-  // Tabella Voci
-  let yPos = 120;
+  // ===== TABELLA VOCI =====
+  yPos += 8;
+
+  // Intestazione tabella con sfondo colorato
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(20, yPos - 5, 170, 7, 'F');
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Descrizione', 20, yPos);
+  doc.text('Descrizione', 22, yPos);
   doc.text('Q.tà', 120, yPos);
   doc.text('Prezzo Unit.', 140, yPos);
-  doc.text('Totale', 175, yPos, { align: 'right' });
-  
-  yPos += 2;
-  doc.line(20, yPos, 190, yPos);
-  
-  yPos += 7;
-  doc.setFont('helvetica', 'normal');
-  
+  doc.text('Totale', 188, yPos, { align: 'right' });
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+  yPos += 8;
+
+  let rowCount = 0;
   fattura.voci.forEach((voce) => {
+    // Sfondo alternato per le righe
+    if (rowCount % 2 === 0) {
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.rect(20, yPos - 4, 170, 6, 'F');
+    }
+
+    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
     const descLines = doc.splitTextToSize(voce.descrizione, 95);
-    doc.text(descLines, 20, yPos);
+    doc.text(descLines, 22, yPos);
     doc.text(voce.quantita.toString(), 120, yPos);
     doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 140, yPos);
-    doc.text(`€ ${voce.totale.toFixed(2)}`, 190, yPos, { align: 'right' });
-    yPos += Math.max(descLines.length * 5, 7);
-    
+    doc.text(`€ ${voce.totale.toFixed(2)}`, 188, yPos, { align: 'right' });
+
+    yPos += Math.max(descLines.length * 4, 6);
+    rowCount++;
+
     if (yPos > 230) {
       doc.addPage();
       yPos = 20;
+      rowCount = 0;
     }
   });
-  
-  // Riepilogo IVA
-  yPos += 5;
+
+  // Linea sotto tabella
+  yPos += 2;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
   doc.line(20, yPos, 190, yPos);
-  yPos += 7;
+  
+  // ===== RIEPILOGO IVA =====
+  yPos += 8;
 
   // Raggruppa voci per aliquota IVA
   const vociPerIva = fattura.voci.reduce((acc: any, voce) => {
@@ -314,8 +452,14 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   let totaleImponibile = 0;
   let totaleIva = 0;
 
+  // Box riepilogo con bordo
+  const boxStartY = yPos;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(1);
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
 
   // Mostra imponibile e IVA per ogni aliquota
   Object.keys(vociPerIva).sort((a, b) => Number(b) - Number(a)).forEach((aliquota) => {
@@ -323,56 +467,86 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     totaleImponibile += imponibile;
     totaleIva += iva;
 
-    doc.text(`Imponibile ${aliquota}%:`, 140, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, 190, yPos, { align: 'right' });
+    doc.text(`Imponibile ${aliquota}%:`, 130, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, 188, yPos, { align: 'right' });
     yPos += 5;
-    doc.text(`IVA ${aliquota}%:`, 140, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, 190, yPos, { align: 'right' });
+    doc.text(`IVA ${aliquota}%:`, 130, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, 188, yPos, { align: 'right' });
     yPos += 5;
   });
 
-  // Totale finale
+  // Linea separatrice
   yPos += 2;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.line(130, yPos, 190, yPos);
+
+  // Totale finale con sfondo
+  yPos += 6;
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(130, yPos - 5, 60, 8, 'F');
+
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('TOTALE:', 140, yPos);
-  doc.text(`€ ${fattura.importoTotale.toFixed(2)}`, 190, yPos, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text('TOTALE:', 132, yPos);
+  doc.text(`€ ${fattura.importoTotale.toFixed(2)}`, 188, yPos, { align: 'right' });
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   
-  // Modalità Pagamento
-  yPos += 15;
+  // ===== MODALITÀ PAGAMENTO =====
+  yPos += 12;
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+  doc.rect(20, yPos - 5, 170, 1, 'F');
+
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Modalità di Pagamento:', 20, yPos);
   yPos += 5;
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.text(impostazioni.condizioniPagamento, 20, yPos);
   if (impostazioni.iban) {
-    yPos += 5;
+    yPos += 4;
     doc.text(`IBAN: ${impostazioni.iban}`, 20, yPos);
   }
   if (impostazioni.banca) {
-    yPos += 5;
+    yPos += 4;
     doc.text(`Banca: ${impostazioni.banca}`, 20, yPos);
   }
-  
-  // Note Legali
+
+  // ===== NOTE LEGALI =====
   if (impostazioni.noteLegaliFattura) {
-    yPos += 10;
+    yPos += 8;
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(20, yPos - 5, 170, 1, 'F');
+
+    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     const noteLines = doc.splitTextToSize(impostazioni.noteLegaliFattura, 170);
     doc.text(noteLines, 20, yPos);
   }
-  
-  // Footer
+
+  // ===== FOOTER =====
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+
+    // Linea separatrice footer
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, 275, 190, 275);
+
+    // Testo footer
+    doc.setTextColor(150, 150, 150);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.text(`Pagina ${i} di ${pageCount}`, 105, 285, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fattura generata il ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 20, 282);
+    doc.text(`Pagina ${i} di ${pageCount}`, 105, 282, { align: 'center' });
   }
-  
+
   // Salva PDF
   doc.save(`Fattura_${fattura.numeroFattura}.pdf`);
 }
