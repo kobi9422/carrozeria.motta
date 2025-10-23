@@ -176,11 +176,19 @@ export default function FatturePage() {
     });
   };
 
-  const handleStampa = (fattura: any) => {
-    setfatturaStampa(fattura);
-    setTimeout(() => {
-      window.print();
-    }, 100);
+  const handleStampa = async (fattura: any) => {
+    try {
+      // Carica le impostazioni
+      const res = await fetch('/api/impostazioni');
+      if (!res.ok) throw new Error('Errore nel caricamento delle impostazioni');
+      const impostazioni = await res.json();
+
+      // Genera PDF con firma
+      await generateFatturaPDF(fattura, impostazioni);
+      setToast({ message: 'PDF generato! Usa il download per stampare.', type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    }
   };
 
   const handleExportPDF = async (fattura: any) => {

@@ -177,11 +177,19 @@ export default function PreventiviPage() {
     });
   };
 
-  const handleStampa = (preventivo: any) => {
-    setPreventivoStampa(preventivo);
-    setTimeout(() => {
-      window.print();
-    }, 100);
+  const handleStampa = async (preventivo: any) => {
+    try {
+      // Carica le impostazioni
+      const res = await fetch('/api/impostazioni');
+      if (!res.ok) throw new Error('Errore nel caricamento delle impostazioni');
+      const impostazioni = await res.json();
+
+      // Genera PDF con firma
+      await generatePreventivoPDF(preventivo, impostazioni);
+      setToast({ message: 'PDF generato! Usa il download per stampare.', type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' });
+    }
   };
 
   const handleExportPDF = async (preventivo: any) => {
