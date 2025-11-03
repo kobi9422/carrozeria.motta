@@ -389,95 +389,137 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   const primaryColor = [41, 128, 185]; // Blu professionale
   const lightGray = [245, 245, 245];
   const darkGray = [80, 80, 80];
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 15;
+  const contentWidth = pageWidth - (margin * 2);
 
   // ===== HEADER AZIENDA =====
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(0, 0, 210, 50, 'F');
+  doc.rect(0, 0, pageWidth, 55, 'F');
 
+  // Sinistra: Dati azienda
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(config.nomeAzienda, 20, 18);
+  doc.text(config.nomeAzienda, margin, 15);
 
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  let headerY = 22;
+  if (config.indirizzo) {
+    doc.text(`${config.indirizzo}`, margin, headerY);
+    headerY += 3.5;
+  }
+  if (config.cap || config.citta) {
+    doc.text(`${config.cap} ${config.citta}${config.provincia ? ' (' + config.provincia + ')' : ''}`, margin, headerY);
+    headerY += 3.5;
+  }
+  if (config.telefono) {
+    doc.text(`Tel: ${config.telefono}`, margin, headerY);
+    headerY += 3.5;
+  }
+  if (config.email) {
+    doc.text(`Email: ${config.email}`, margin, headerY);
+    headerY += 3.5;
+  }
+  if (config.partitaIva) {
+    doc.text(`P.IVA: ${config.partitaIva}`, margin, headerY);
+    headerY += 3.5;
+  }
+  if (config.codiceFiscale) {
+    doc.text(`CF: ${config.codiceFiscale}`, margin, headerY);
+  }
+
+  // Destra: Numero e date fattura
   doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FATTURA', pageWidth - margin - 40, 15);
+
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${config.indirizzo} | ${config.cap} ${config.citta}`, 20, 28);
-  doc.text(`Tel: ${config.telefono} | Email: ${config.email}`, 20, 33);
-  if (config.partitaIva) doc.text(`P.IVA: ${config.partitaIva}`, 20, 38);
-  if (config.codiceFiscale) doc.text(`CF: ${config.codiceFiscale}`, 20, 43);
-
-  // Titolo Documento a destra
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FATTURA', 150, 22);
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`N. ${fattura.numeroFattura}`, 150, 32);
-  doc.text(`Data Emissione: ${new Date(fattura.dataEmissione).toLocaleDateString('it-IT')}`, 150, 38);
-  doc.text(`Scadenza: ${new Date(fattura.dataScadenza).toLocaleDateString('it-IT')}`, 150, 44);
+  let rightY = 23;
+  doc.text(`N. ${fattura.numeroFattura}`, pageWidth - margin - 40, rightY);
+  rightY += 5;
+  doc.text(`Data: ${new Date(fattura.dataEmissione).toLocaleDateString('it-IT')}`, pageWidth - margin - 40, rightY);
+  rightY += 5;
+  doc.text(`Scadenza: ${new Date(fattura.dataScadenza).toLocaleDateString('it-IT')}`, pageWidth - margin - 40, rightY);
+  rightY += 5;
   if (fattura.dataPagamento) {
-    doc.text(`Pagata il: ${new Date(fattura.dataPagamento).toLocaleDateString('it-IT')}`, 150, 50);
+    doc.text(`Pagata: ${new Date(fattura.dataPagamento).toLocaleDateString('it-IT')}`, pageWidth - margin - 40, rightY);
   }
 
   // Reset colore testo
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
 
   // ===== SEZIONE CLIENTE =====
-  let yPos = 60;
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('CLIENTE', 20, yPos);
+  let yPos = 62;
 
-  yPos += 8;
+  // Box cliente con bordo
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, yPos - 5, contentWidth / 2 - 2, 35);
+
   doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', margin + 3, yPos);
+
+  yPos += 6;
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${fattura.cliente.nome} ${fattura.cliente.cognome}`, 20, yPos);
-  yPos += 5;
+  doc.text(`${fattura.cliente.nome} ${fattura.cliente.cognome}`, margin + 3, yPos);
+  yPos += 4;
   if (fattura.cliente.indirizzo) {
-    doc.text(fattura.cliente.indirizzo, 20, yPos);
-    yPos += 5;
+    doc.text(fattura.cliente.indirizzo, margin + 3, yPos);
+    yPos += 4;
   }
   if (fattura.cliente.citta) {
-    doc.text(`${fattura.cliente.cap || ''} ${fattura.cliente.citta} ${fattura.cliente.provincia ? '(' + fattura.cliente.provincia + ')' : ''}`, 20, yPos);
-    yPos += 5;
+    doc.text(`${fattura.cliente.cap || ''} ${fattura.cliente.citta} ${fattura.cliente.provincia ? '(' + fattura.cliente.provincia + ')' : ''}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (fattura.cliente.telefono) {
-    doc.text(`Tel: ${fattura.cliente.telefono}`, 20, yPos);
-    yPos += 5;
+    doc.text(`Tel: ${fattura.cliente.telefono}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (fattura.cliente.email) {
-    doc.text(`Email: ${fattura.cliente.email}`, 20, yPos);
-    yPos += 5;
+    doc.text(`Email: ${fattura.cliente.email}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (fattura.cliente.codiceFiscale) {
-    doc.text(`CF: ${fattura.cliente.codiceFiscale}`, 20, yPos);
-    yPos += 5;
+    doc.text(`CF: ${fattura.cliente.codiceFiscale}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (fattura.cliente.partitaIva) {
-    doc.text(`P.IVA: ${fattura.cliente.partitaIva}`, 20, yPos);
-    yPos += 5;
+    doc.text(`P.IVA: ${fattura.cliente.partitaIva}`, margin + 3, yPos);
   }
   
   // ===== TABELLA VOCI =====
-  yPos += 8;
+  yPos = 100;
+
+  // Definisci le colonne
+  const col = {
+    desc: margin,
+    qty: margin + 85,
+    price: margin + 105,
+    taxable: margin + 130,
+    tax: margin + 160,
+    total: margin + contentWidth - 15
+  };
 
   // Intestazione tabella con sfondo colorato
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(20, yPos - 5, 170, 7, 'F');
+  doc.rect(margin, yPos - 5, contentWidth, 7, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('Descrizione', 22, yPos);
-  doc.text('Q.tà', 90, yPos);
-  doc.text('Prezzo Unit.', 110, yPos);
-  doc.text('Imponibile', 140, yPos);
-  doc.text('IVA', 165, yPos);
-  doc.text('Totale', 188, yPos, { align: 'right' });
+  doc.text('Descrizione', col.desc + 2, yPos);
+  doc.text('Q.tà', col.qty, yPos);
+  doc.text('Prezzo Unit.', col.price, yPos);
+  doc.text('Imponibile', col.taxable, yPos);
+  doc.text('IVA', col.tax, yPos);
+  doc.text('Totale', col.total, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   yPos += 8;
@@ -492,25 +534,25 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     // Sfondo alternato per le righe
     if (rowCount % 2 === 0) {
       doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-      doc.rect(20, yPos - 4, 170, 6, 'F');
+      doc.rect(margin, yPos - 4, contentWidth, 6, 'F');
     }
 
     doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    const descLines = doc.splitTextToSize(voce.descrizione, 65);
-    doc.text(descLines, 22, yPos);
-    doc.text(voce.quantita.toString(), 90, yPos);
-    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 110, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, 140, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, 165, yPos);
-    doc.text(`€ ${voce.totale.toFixed(2)}`, 188, yPos, { align: 'right' });
+    const descLines = doc.splitTextToSize(voce.descrizione, 80);
+    doc.text(descLines, col.desc + 2, yPos);
+    doc.text(voce.quantita.toString(), col.qty, yPos);
+    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, col.price, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, col.taxable, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, col.tax, yPos);
+    doc.text(`€ ${voce.totale.toFixed(2)}`, col.total, yPos, { align: 'right' });
 
     yPos += Math.max(descLines.length * 4, 6);
     rowCount++;
 
-    if (yPos > 230) {
+    if (yPos > 220) {
       doc.addPage();
       yPos = 20;
       rowCount = 0;
@@ -521,7 +563,7 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   yPos += 2;
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
-  doc.line(20, yPos, 190, yPos);
+  doc.line(margin, yPos, margin + contentWidth, yPos);
   
   // ===== RIEPILOGO IVA =====
   yPos += 8;
@@ -543,13 +585,24 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   let totaleIva = 0;
 
   // Box riepilogo con bordo
-  const boxStartY = yPos;
-  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.setLineWidth(1);
+  const riepilogoX = margin + contentWidth - 70;
+  const riepilogoWidth = 70;
 
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(riepilogoX, yPos - 5, riepilogoWidth, 5);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(riepilogoX, yPos - 5, riepilogoWidth, 5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('RIEPILOGO IVA', riepilogoX + 2, yPos - 1);
+
+  yPos += 5;
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8);
 
   // Mostra imponibile e IVA per ogni aliquota
   Object.keys(vociPerIva).sort((a, b) => Number(b) - Number(a)).forEach((aliquota) => {
@@ -557,66 +610,69 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     totaleImponibile += imponibile;
     totaleIva += iva;
 
-    doc.text(`Imponibile ${aliquota}%:`, 130, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, 188, yPos, { align: 'right' });
-    yPos += 5;
-    doc.text(`IVA ${aliquota}%:`, 130, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, 188, yPos, { align: 'right' });
-    yPos += 5;
+    doc.text(`Imponibile ${aliquota}%:`, riepilogoX + 2, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, riepilogoX + riepilogoWidth - 2, yPos, { align: 'right' });
+    yPos += 4;
+    doc.text(`IVA ${aliquota}%:`, riepilogoX + 2, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, riepilogoX + riepilogoWidth - 2, yPos, { align: 'right' });
+    yPos += 4;
   });
 
   // Linea separatrice
-  yPos += 2;
+  yPos += 1;
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
-  doc.line(130, yPos, 190, yPos);
+  doc.line(riepilogoX, yPos, riepilogoX + riepilogoWidth, yPos);
 
   // Totale finale con sfondo
-  yPos += 6;
+  yPos += 4;
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(130, yPos - 5, 60, 8, 'F');
+  doc.rect(riepilogoX, yPos - 4, riepilogoWidth, 7, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('TOTALE:', 132, yPos);
-  doc.text(`€ ${fattura.importoTotale.toFixed(2)}`, 188, yPos, { align: 'right' });
+  doc.setFontSize(10);
+  doc.text('TOTALE:', riepilogoX + 2, yPos);
+  doc.text(`€ ${fattura.importoTotale.toFixed(2)}`, riepilogoX + riepilogoWidth - 2, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   
   // ===== MODALITÀ PAGAMENTO =====
   yPos += 12;
-  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-  doc.rect(20, yPos - 5, 170, 1, 'F');
+
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, yPos - 5, contentWidth, 1);
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Modalità di Pagamento:', 20, yPos);
+  doc.text('Modalità di Pagamento:', margin, yPos);
   yPos += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(config.condizioniPagamento, 20, yPos);
+  doc.text(config.condizioniPagamento, margin, yPos);
   if (config.iban) {
     yPos += 4;
-    doc.text(`IBAN: ${config.iban}`, 20, yPos);
+    doc.text(`IBAN: ${config.iban}`, margin, yPos);
   }
   if (config.banca) {
     yPos += 4;
-    doc.text(`Banca: ${config.banca}`, 20, yPos);
+    doc.text(`Banca: ${config.banca}`, margin, yPos);
   }
 
   // ===== NOTE LEGALI =====
   if (config.noteLegaliFattura) {
     yPos += 8;
-    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-    doc.rect(20, yPos - 5, 170, 1, 'F');
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, yPos - 5, contentWidth, 1);
 
     doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    const noteLines = doc.splitTextToSize(config.noteLegaliFattura, 170);
-    doc.text(noteLines, 20, yPos);
+    const noteLines = doc.splitTextToSize(config.noteLegaliFattura, contentWidth - 4);
+    doc.text(noteLines, margin + 2, yPos);
   }
 
   // ===== FOOTER =====
