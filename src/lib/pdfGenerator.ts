@@ -588,9 +588,11 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   let totaleImponibile = 0;
   let totaleIva = 0;
 
-  // Box riepilogo con bordo - posizionato a sinistra per evitare sovrapposizioni
+  // Box riepilogo con bordo - larghezza intera per evitare sovrapposizioni
   const riepilogoX = margin;
-  const riepilogoWidth = contentWidth / 2 - 5;
+  const riepilogoWidth = contentWidth;
+  const labelCol = riepilogoX + 2;
+  const valueCol = riepilogoX + riepilogoWidth - 30; // Colonna per i valori con spazio adeguato
 
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
@@ -601,7 +603,7 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   doc.rect(riepilogoX, yPos - 5, riepilogoWidth, 5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('RIEPILOGO IVA', riepilogoX + 2, yPos - 1);
+  doc.text('RIEPILOGO IVA', labelCol, yPos - 1);
 
   yPos += 5;
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
@@ -614,11 +616,11 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     totaleImponibile += imponibile;
     totaleIva += iva;
 
-    doc.text(`Imponibile ${aliquota}%:`, riepilogoX + 2, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, riepilogoX + riepilogoWidth - 2, yPos, { align: 'right' });
+    doc.text(`Imponibile ${aliquota}%:`, labelCol, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, valueCol, yPos, { align: 'right' });
     yPos += 4;
-    doc.text(`IVA ${aliquota}%:`, riepilogoX + 2, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, riepilogoX + riepilogoWidth - 2, yPos, { align: 'right' });
+    doc.text(`IVA ${aliquota}%:`, labelCol, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, valueCol, yPos, { align: 'right' });
     yPos += 4;
   });
 
@@ -635,9 +637,9 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('TOTALE:', riepilogoX + 2, yPos);
-  doc.text(`€ ${fattura.importoTotale.toFixed(2)}`, riepilogoX + riepilogoWidth - 2, yPos, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text('TOTALE:', labelCol, yPos);
+  doc.text(`€ ${fattura.importoTotale.toFixed(2)}`, valueCol, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   
