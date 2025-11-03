@@ -180,11 +180,17 @@ export default function PreventiviPage() {
   const handleStampa = async (preventivo: any) => {
     try {
       // Carica le impostazioni
-      const res = await fetch('/api/impostazioni');
-      if (!res.ok) throw new Error('Errore nel caricamento delle impostazioni');
-      const impostazioni = await res.json();
+      let impostazioni = null;
+      try {
+        const res = await fetch('/api/impostazioni');
+        if (res.ok) {
+          impostazioni = await res.json();
+        }
+      } catch (error) {
+        console.warn('Errore nel caricamento delle impostazioni, continuo con valori di default');
+      }
 
-      // Genera PDF con firma
+      // Genera PDF con firma (impostazioni può essere null, il PDF generator ha valori di default)
       await generatePreventivoPDF(preventivo, impostazioni);
       setToast({ message: 'PDF generato! Usa il download per stampare.', type: 'success' });
     } catch (error: any) {
@@ -195,11 +201,17 @@ export default function PreventiviPage() {
   const handleExportPDF = async (preventivo: any) => {
     try {
       // Carica le impostazioni
-      const res = await fetch('/api/impostazioni');
-      if (!res.ok) throw new Error('Errore nel caricamento delle impostazioni');
-      const impostazioni = await res.json();
+      let impostazioni = null;
+      try {
+        const res = await fetch('/api/impostazioni');
+        if (res.ok) {
+          impostazioni = await res.json();
+        }
+      } catch (error) {
+        console.warn('Errore nel caricamento delle impostazioni, continuo con valori di default');
+      }
 
-      // Genera PDF
+      // Genera PDF (impostazioni può essere null, il PDF generator ha valori di default)
       await generatePreventivoPDF(preventivo, impostazioni);
       setToast({ message: 'PDF generato con successo!', type: 'success' });
     } catch (error: any) {

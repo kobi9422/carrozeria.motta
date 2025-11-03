@@ -61,7 +61,27 @@ interface Fattura {
   note?: string;
 }
 
-export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni: Impostazioni) {
+export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni: Impostazioni | null) {
+  // Valori di default se impostazioni è null
+  const defaultImpostazioni: Impostazioni = {
+    nomeAzienda: 'Carrozzeria Motta',
+    indirizzo: '',
+    citta: '',
+    cap: '',
+    provincia: '',
+    telefono: '',
+    email: '',
+    partitaIva: '',
+    codiceFiscale: '',
+    iban: '',
+    banca: '',
+    condizioniPagamento: 'Pagamento a 30 giorni',
+    noteLegaliFattura: '',
+    firmaUrl: undefined
+  };
+
+  const config = impostazioni || defaultImpostazioni;
+
   const doc = new jsPDF();
   const primaryColor = [41, 128, 185]; // Blu professionale
   const lightGray = [245, 245, 245];
@@ -74,14 +94,14 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text(impostazioni.nomeAzienda, 20, 18);
+  doc.text(config.nomeAzienda, 20, 18);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${impostazioni.indirizzo} | ${impostazioni.cap} ${impostazioni.citta}`, 20, 28);
-  doc.text(`Tel: ${impostazioni.telefono} | Email: ${impostazioni.email}`, 20, 33);
-  if (impostazioni.partitaIva) doc.text(`P.IVA: ${impostazioni.partitaIva}`, 20, 38);
+  doc.text(`${config.indirizzo} | ${config.cap} ${config.citta}`, 20, 28);
+  doc.text(`Tel: ${config.telefono} | Email: ${config.email}`, 20, 33);
+  if (config.partitaIva) doc.text(`P.IVA: ${config.partitaIva}`, 20, 38);
 
   // Titolo Documento a destra
   doc.setTextColor(255, 255, 255);
@@ -286,14 +306,14 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   yPos += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(impostazioni.condizioniPagamento, 20, yPos);
-  if (impostazioni.iban) {
+  doc.text(config.condizioniPagamento, 20, yPos);
+  if (config.iban) {
     yPos += 4;
-    doc.text(`IBAN: ${impostazioni.iban}`, 20, yPos);
+    doc.text(`IBAN: ${config.iban}`, 20, yPos);
   }
-  if (impostazioni.banca) {
+  if (config.banca) {
     yPos += 4;
-    doc.text(`Banca: ${impostazioni.banca}`, 20, yPos);
+    doc.text(`Banca: ${config.banca}`, 20, yPos);
   }
 
   // ===== NOTE =====
@@ -319,9 +339,9 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
     doc.setPage(i);
 
     // Firma digitale (se presente)
-    if (impostazioni.firmaUrl) {
+    if (config.firmaUrl) {
       try {
-        doc.addImage(impostazioni.firmaUrl, 'PNG', 20, 265, 50, 15);
+        doc.addImage(config.firmaUrl, 'PNG', 20, 265, 50, 15);
       } catch (error) {
         console.error('Errore nell\'aggiunta della firma:', error);
       }
@@ -344,7 +364,27 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   doc.save(`Preventivo_${preventivo.numeroPreventivo}.pdf`);
 }
 
-export async function generateFatturaPDF(fattura: Fattura, impostazioni: Impostazioni) {
+export async function generateFatturaPDF(fattura: Fattura, impostazioni: Impostazioni | null) {
+  // Valori di default se impostazioni è null
+  const defaultImpostazioni: Impostazioni = {
+    nomeAzienda: 'Carrozzeria Motta',
+    indirizzo: '',
+    citta: '',
+    cap: '',
+    provincia: '',
+    telefono: '',
+    email: '',
+    partitaIva: '',
+    codiceFiscale: '',
+    iban: '',
+    banca: '',
+    condizioniPagamento: 'Pagamento a 30 giorni',
+    noteLegaliFattura: '',
+    firmaUrl: undefined
+  };
+
+  const config = impostazioni || defaultImpostazioni;
+
   const doc = new jsPDF();
   const primaryColor = [41, 128, 185]; // Blu professionale
   const lightGray = [245, 245, 245];
@@ -357,15 +397,15 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text(impostazioni.nomeAzienda, 20, 18);
+  doc.text(config.nomeAzienda, 20, 18);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${impostazioni.indirizzo} | ${impostazioni.cap} ${impostazioni.citta}`, 20, 28);
-  doc.text(`Tel: ${impostazioni.telefono} | Email: ${impostazioni.email}`, 20, 33);
-  if (impostazioni.partitaIva) doc.text(`P.IVA: ${impostazioni.partitaIva}`, 20, 38);
-  if (impostazioni.codiceFiscale) doc.text(`CF: ${impostazioni.codiceFiscale}`, 20, 43);
+  doc.text(`${config.indirizzo} | ${config.cap} ${config.citta}`, 20, 28);
+  doc.text(`Tel: ${config.telefono} | Email: ${config.email}`, 20, 33);
+  if (config.partitaIva) doc.text(`P.IVA: ${config.partitaIva}`, 20, 38);
+  if (config.codiceFiscale) doc.text(`CF: ${config.codiceFiscale}`, 20, 43);
 
   // Titolo Documento a destra
   doc.setTextColor(255, 255, 255);
@@ -556,18 +596,18 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   yPos += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(impostazioni.condizioniPagamento, 20, yPos);
-  if (impostazioni.iban) {
+  doc.text(config.condizioniPagamento, 20, yPos);
+  if (config.iban) {
     yPos += 4;
-    doc.text(`IBAN: ${impostazioni.iban}`, 20, yPos);
+    doc.text(`IBAN: ${config.iban}`, 20, yPos);
   }
-  if (impostazioni.banca) {
+  if (config.banca) {
     yPos += 4;
-    doc.text(`Banca: ${impostazioni.banca}`, 20, yPos);
+    doc.text(`Banca: ${config.banca}`, 20, yPos);
   }
 
   // ===== NOTE LEGALI =====
-  if (impostazioni.noteLegaliFattura) {
+  if (config.noteLegaliFattura) {
     yPos += 8;
     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
     doc.rect(20, yPos - 5, 170, 1, 'F');
@@ -575,7 +615,7 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    const noteLines = doc.splitTextToSize(impostazioni.noteLegaliFattura, 170);
+    const noteLines = doc.splitTextToSize(config.noteLegaliFattura, 170);
     doc.text(noteLines, 20, yPos);
   }
 
@@ -585,9 +625,9 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     doc.setPage(i);
 
     // Firma digitale (se presente)
-    if (impostazioni.firmaUrl) {
+    if (config.firmaUrl) {
       try {
-        doc.addImage(impostazioni.firmaUrl, 'PNG', 20, 265, 50, 15);
+        doc.addImage(config.firmaUrl, 'PNG', 20, 265, 50, 15);
       } catch (error) {
         console.error('Errore nell\'aggiunta della firma:', error);
       }
