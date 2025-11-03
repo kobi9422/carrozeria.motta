@@ -455,11 +455,7 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
 
   // ===== SEZIONE CLIENTE =====
   let yPos = 62;
-
-  // Box cliente con bordo
-  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.setLineWidth(0.5);
-  doc.rect(margin, yPos - 5, contentWidth / 2 - 2, 35);
+  const clienteStartY = yPos;
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -492,19 +488,26 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   }
   if (fattura.cliente.partitaIva) {
     doc.text(`P.IVA: ${fattura.cliente.partitaIva}`, margin + 3, yPos);
+    yPos += 4;
   }
-  
-  // ===== TABELLA VOCI =====
-  yPos = 100;
 
-  // Definisci le colonne
+  // Box cliente con bordo (disegnato dopo il testo per evitare sovrapposizioni)
+  const clienteHeight = yPos - clienteStartY + 2;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, clienteStartY - 5, contentWidth / 2 - 2, clienteHeight);
+
+  // ===== TABELLA VOCI =====
+  yPos += 8;
+
+  // Definisci le colonne con spazi adeguati
   const col = {
-    desc: margin,
-    qty: margin + 85,
-    price: margin + 105,
-    taxable: margin + 130,
-    tax: margin + 160,
-    total: margin + contentWidth - 15
+    desc: margin + 2,
+    qty: margin + 75,
+    price: margin + 95,
+    taxable: margin + 120,
+    tax: margin + 150,
+    total: margin + contentWidth - 10
   };
 
   // Intestazione tabella con sfondo colorato
@@ -541,8 +544,9 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    const descLines = doc.splitTextToSize(voce.descrizione, 80);
-    doc.text(descLines, col.desc + 2, yPos);
+    // Descrizione con larghezza massima di 70px per evitare sovrapposizioni
+    const descLines = doc.splitTextToSize(voce.descrizione, 70);
+    doc.text(descLines, col.desc, yPos);
     doc.text(voce.quantita.toString(), col.qty, yPos);
     doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, col.price, yPos);
     doc.text(`€ ${imponibile.toFixed(2)}`, col.taxable, yPos);
@@ -566,7 +570,7 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   doc.line(margin, yPos, margin + contentWidth, yPos);
   
   // ===== RIEPILOGO IVA =====
-  yPos += 8;
+  yPos += 10;
 
   // Raggruppa voci per aliquota IVA
   const vociPerIva = fattura.voci.reduce((acc: any, voce) => {
@@ -584,9 +588,9 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   let totaleImponibile = 0;
   let totaleIva = 0;
 
-  // Box riepilogo con bordo
-  const riepilogoX = margin + contentWidth - 70;
-  const riepilogoWidth = 70;
+  // Box riepilogo con bordo - posizionato a sinistra per evitare sovrapposizioni
+  const riepilogoX = margin;
+  const riepilogoWidth = contentWidth / 2 - 5;
 
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
