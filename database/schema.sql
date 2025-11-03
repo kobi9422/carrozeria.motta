@@ -41,6 +41,13 @@ CREATE TABLE public.clienti (
     indirizzo TEXT,
     citta TEXT,
     cap TEXT,
+    provincia TEXT,
+    codice_fiscale TEXT,
+    partita_iva TEXT,
+    tipo_cliente TEXT DEFAULT 'privato',
+    sdi TEXT,
+    codice_univoco TEXT,
+    foto_url TEXT,
     note TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -87,6 +94,7 @@ CREATE TABLE public.preventivi (
     numero_preventivo TEXT UNIQUE NOT NULL,
     cliente_id UUID REFERENCES public.clienti(id) ON DELETE CASCADE,
     veicolo_id UUID REFERENCES public.veicoli(id) ON DELETE SET NULL,
+    ordine_lavoro_id UUID REFERENCES public.ordini_lavoro(id) ON DELETE SET NULL,
     titolo TEXT NOT NULL,
     descrizione TEXT NOT NULL,
     stato stato_preventivo DEFAULT 'bozza',
@@ -105,6 +113,8 @@ CREATE TABLE public.voci_preventivo (
     quantita INTEGER NOT NULL DEFAULT 1,
     prezzo_unitario DECIMAL(10,2) NOT NULL,
     importo_totale DECIMAL(10,2) GENERATED ALWAYS AS (quantita * prezzo_unitario) STORED,
+    iva DECIMAL(5,2) DEFAULT 0,
+    importo_iva DECIMAL(10,2) GENERATED ALWAYS AS (importo_totale * iva / 100) STORED,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -133,7 +143,64 @@ CREATE TABLE public.voci_fattura (
     quantita INTEGER NOT NULL DEFAULT 1,
     prezzo_unitario DECIMAL(10,2) NOT NULL,
     importo_totale DECIMAL(10,2) GENERATED ALWAYS AS (quantita * prezzo_unitario) STORED,
+    iva DECIMAL(5,2) DEFAULT 0,
+    importo_iva DECIMAL(10,2) GENERATED ALWAYS AS (importo_totale * iva / 100) STORED,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabella impostazioni aziendali
+CREATE TABLE public.impostazioni (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    nome_azienda TEXT NOT NULL DEFAULT 'Carrozzeria Motta',
+    indirizzo TEXT,
+    citta TEXT,
+    cap TEXT,
+    provincia TEXT,
+    telefono TEXT,
+    email TEXT,
+    partita_iva TEXT,
+    codice_fiscale TEXT,
+    iban TEXT,
+    banca TEXT,
+    condizioni_pagamento TEXT,
+    note_legali_fattura TEXT,
+    validita_preventivi INTEGER DEFAULT 30,
+    note_standard_preventivo TEXT,
+    firma_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabella sessioni timer per ordini di lavoro
+CREATE TABLE public.ordini_lavoro_sessioni (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    ordine_lavoro_id UUID REFERENCES public.ordini_lavoro(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabella eventi calendario
+CREATE TABLE public.eventi (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    titolo TEXT NOT NULL,
+    descrizione TEXT,
+    tipo TEXT NOT NULL CHECK (tipo IN ('ordine', 'appuntamento', 'scadenza', 'altro')),
+    data_inizio TIMESTAMP WITH TIME ZONE NOT NULL,
+    data_fine TIMESTAMP WITH TIME ZONE,
+    ora_inizio TIME,
+    ora_fine TIME,
+    tutto_il_giorno BOOLEAN DEFAULT FALSE,
+    cliente_id UUID REFERENCES public.clienti(id) ON DELETE SET NULL,
+    veicolo_id UUID REFERENCES public.veicoli(id) ON DELETE SET NULL,
+    ordine_lavoro_id UUID REFERENCES public.ordini_lavoro(id) ON DELETE CASCADE,
+    note TEXT,
+    colore TEXT DEFAULT '#3B82F6',
+    created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Indici per migliorare le performance
@@ -147,6 +214,12 @@ CREATE INDEX idx_preventivi_cliente_id ON public.preventivi(cliente_id);
 CREATE INDEX idx_preventivi_stato ON public.preventivi(stato);
 CREATE INDEX idx_fatture_cliente_id ON public.fatture(cliente_id);
 CREATE INDEX idx_fatture_stato ON public.fatture(stato);
+CREATE INDEX idx_ordini_lavoro_sessioni_ordine_id ON public.ordini_lavoro_sessioni(ordine_lavoro_id);
+CREATE INDEX idx_ordini_lavoro_sessioni_user_id ON public.ordini_lavoro_sessioni(user_id);
+CREATE INDEX idx_ordini_lavoro_sessioni_end_time ON public.ordini_lavoro_sessioni(end_time);
+CREATE INDEX idx_eventi_data_inizio ON public.eventi(data_inizio);
+CREATE INDEX idx_eventi_cliente_id ON public.eventi(cliente_id);
+CREATE INDEX idx_eventi_ordine_id ON public.eventi(ordine_lavoro_id);
 
 -- Funzione per aggiornare automaticamente updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -164,6 +237,9 @@ CREATE TRIGGER update_veicoli_updated_at BEFORE UPDATE ON public.veicoli FOR EAC
 CREATE TRIGGER update_ordini_lavoro_updated_at BEFORE UPDATE ON public.ordini_lavoro FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_preventivi_updated_at BEFORE UPDATE ON public.preventivi FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_fatture_updated_at BEFORE UPDATE ON public.fatture FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_impostazioni_updated_at BEFORE UPDATE ON public.impostazioni FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_ordini_lavoro_sessioni_updated_at BEFORE UPDATE ON public.ordini_lavoro_sessioni FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_eventi_updated_at BEFORE UPDATE ON public.eventi FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Funzione per aggiornare automaticamente l'importo totale dei preventivi
 CREATE OR REPLACE FUNCTION update_preventivo_totale()
@@ -214,6 +290,9 @@ ALTER TABLE public.preventivi ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.voci_preventivo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fatture ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.voci_fattura ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.impostazioni ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ordini_lavoro_sessioni ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.eventi ENABLE ROW LEVEL SECURITY;
 
 -- Policy per users: solo admin può gestire utenti
 CREATE POLICY "Admin can manage users" ON public.users
@@ -268,4 +347,36 @@ CREATE POLICY "Authenticated users can manage fatture" ON public.fatture
 
 -- Policy per voci fattura: tutti gli utenti autenticati possono gestire
 CREATE POLICY "Authenticated users can manage voci_fattura" ON public.voci_fattura
+    FOR ALL USING (auth.uid() IS NOT NULL);
+
+-- Policy per impostazioni: solo admin può gestire
+CREATE POLICY "Admin can manage impostazioni" ON public.impostazioni
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.users
+            WHERE id = auth.uid() AND ruolo = 'admin'
+        )
+    );
+
+-- Policy per ordini_lavoro_sessioni: utenti possono vedere le proprie sessioni, admin vede tutto
+CREATE POLICY "Users can view own sessions" ON public.ordini_lavoro_sessioni
+    FOR SELECT USING (
+        user_id = auth.uid() OR
+        EXISTS (
+            SELECT 1 FROM public.users
+            WHERE id = auth.uid() AND ruolo = 'admin'
+        )
+    );
+
+CREATE POLICY "Users can manage own sessions" ON public.ordini_lavoro_sessioni
+    FOR INSERT WITH CHECK (
+        user_id = auth.uid() OR
+        EXISTS (
+            SELECT 1 FROM public.users
+            WHERE id = auth.uid() AND ruolo = 'admin'
+        )
+    );
+
+-- Policy per eventi: tutti gli utenti autenticati possono gestire
+CREATE POLICY "Authenticated users can manage eventi" ON public.eventi
     FOR ALL USING (auth.uid() IS NOT NULL);
