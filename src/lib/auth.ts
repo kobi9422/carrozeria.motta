@@ -1,20 +1,25 @@
-import { prisma } from './prisma';
 import { hashPassword, comparePassword, generateToken, verifyToken, getTokenFromRequest } from './jwt';
 import { User } from '@/types';
 
-// Funzioni di autenticazione per Carrozzeria Motta con Prisma
+// Funzioni di autenticazione per Carrozzeria Motta con Supabase
 
 export async function signInWithEmail(email: string, password: string): Promise<{ user: User; token: string } | null> {
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const { supabaseServer } = await import('@/lib/supabase');
+    const bcrypt = await import('bcryptjs');
 
-    if (!user || !user.attivo) {
+    const { data: user, error } = await supabaseServer
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('attivo', true)
+      .single();
+
+    if (error || !user) {
       throw new Error('Credenziali non valide');
     }
 
-    const isPasswordValid = await comparePassword(password, user.password);
+    const isPasswordValid = await bcrypt.default.compare(password, user.password);
     if (!isPasswordValid) {
       throw new Error('Credenziali non valide');
     }
@@ -32,8 +37,8 @@ export async function signInWithEmail(email: string, password: string): Promise<
       cognome: user.cognome,
       ruolo: user.ruolo,
       attivo: user.attivo,
-      created_at: user.createdAt.toISOString(),
-      updated_at: user.updatedAt.toISOString(),
+      created_at: user.created_at,
+      updated_at: user.updated_at,
     };
 
     return { user: userWithoutPassword, token };
@@ -50,10 +55,14 @@ export async function signUpWithEmail(
   ruolo: 'admin' | 'employee'
 ): Promise<User> {
   try {
+    const { supabaseServer } = await import('@/lib/supabase');
+
     // Verifica se l'email esiste già
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const { data: existingUser } = await supabaseServer
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
 
     if (existingUser) {
       throw new Error('Email già registrata');
@@ -61,15 +70,23 @@ export async function signUpWithEmail(
 
     const hashedPassword = await hashPassword(password);
 
-    const user = await prisma.user.create({
-      data: {
+    const { data: user, error } = await supabaseServer
+      .from('users')
+      .insert({
+        id: crypto.randomUUID(),
         email,
         password: hashedPassword,
         nome,
         cognome,
         ruolo,
-      },
-    });
+        attivo: true,
+      })
+      .select()
+      .single();
+
+    if (error || !user) {
+      throw new Error('Errore durante la creazione dell\'utente');
+    }
 
     return {
       id: user.id,
@@ -78,8 +95,8 @@ export async function signUpWithEmail(
       cognome: user.cognome,
       ruolo: user.ruolo,
       attivo: user.attivo,
-      created_at: user.createdAt.toISOString(),
-      updated_at: user.updatedAt.toISOString(),
+      created_at: user.created_at,
+      updated_at: user.updated_at,
     };
   } catch (error: any) {
     throw new Error(error.message || 'Errore durante la registrazione');
@@ -154,14 +171,21 @@ export async function isAuthenticated(user: User | null): boolean {
 
 export async function updateProfile(userId: string, updates: Partial<User>): Promise<boolean> {
   try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
+    const { supabaseServer } = await import('@/lib/supabase');
+
+    const { error } = await supabaseServer
+      .from('users')
+      .update({
         nome: updates.nome,
         cognome: updates.cognome,
         email: updates.email,
-      },
-    });
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
 
     return true;
   } catch (error: any) {
@@ -171,12 +195,20 @@ export async function updateProfile(userId: string, updates: Partial<User>): Pro
 
 export async function changePassword(userId: string, newPassword: string): Promise<boolean> {
   try {
+    const { supabaseServer } = await import('@/lib/supabase');
     const hashedPassword = await hashPassword(newPassword);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
+    const { error } = await supabaseServer
+      .from('users')
+      .update({
+        password: hashedPassword,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
 
     return true;
   } catch (error: any) {

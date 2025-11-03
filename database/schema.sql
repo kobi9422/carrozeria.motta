@@ -18,11 +18,15 @@ CREATE TYPE stato_fattura AS ENUM ('bozza', 'emessa', 'pagata', 'scaduta', 'annu
 
 -- Tabella utenti (estende auth.users di Supabase)
 CREATE TABLE public.users (
-    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
     nome TEXT NOT NULL,
     cognome TEXT NOT NULL,
+    telefono TEXT,
     ruolo user_role DEFAULT 'employee',
+    attivo BOOLEAN DEFAULT true,
+    costo_orario DECIMAL(10, 2) DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

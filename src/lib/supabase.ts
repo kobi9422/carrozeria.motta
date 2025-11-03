@@ -36,27 +36,39 @@ export type Database = {
         Row: {
           id: string;
           email: string;
+          password: string;
           nome: string;
           cognome: string;
+          telefono?: string;
           ruolo: Database['public']['Enums']['user_role'];
+          attivo: boolean;
+          costo_orario: number;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          id: string;
+          id?: string;
           email: string;
+          password: string;
           nome: string;
           cognome: string;
+          telefono?: string;
           ruolo?: Database['public']['Enums']['user_role'];
+          attivo?: boolean;
+          costo_orario?: number;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           email?: string;
+          password?: string;
           nome?: string;
           cognome?: string;
+          telefono?: string;
           ruolo?: Database['public']['Enums']['user_role'];
+          attivo?: boolean;
+          costo_orario?: number;
           updated_at?: string;
         };
       };
