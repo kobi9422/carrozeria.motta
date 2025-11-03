@@ -86,89 +86,109 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   const primaryColor = [41, 128, 185]; // Blu professionale
   const lightGray = [245, 245, 245];
   const darkGray = [80, 80, 80];
+  const margin = 15;
+  const pageWidth = 210;
+  const contentWidth = pageWidth - (margin * 2);
 
   // ===== HEADER AZIENDA =====
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(0, 0, 210, 50, 'F');
+  doc.rect(0, 0, pageWidth, 45, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text(config.nomeAzienda, 20, 18);
+  doc.text(config.nomeAzienda, margin, 15);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${config.indirizzo} | ${config.cap} ${config.citta}`, margin, 26);
+  doc.text(`Tel: ${config.telefono} | Email: ${config.email}`, margin, 31);
+  if (config.partitaIva) doc.text(`P.IVA: ${config.partitaIva}`, margin, 36);
+
+  // Titolo Documento a destra
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PREVENTIVO', pageWidth - margin - 40, 15);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${config.indirizzo} | ${config.cap} ${config.citta}`, 20, 28);
-  doc.text(`Tel: ${config.telefono} | Email: ${config.email}`, 20, 33);
-  if (config.partitaIva) doc.text(`P.IVA: ${config.partitaIva}`, 20, 38);
-
-  // Titolo Documento a destra
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PREVENTIVO', 150, 22);
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`N. ${preventivo.numeroPreventivo}`, 150, 32);
-  doc.text(`Data: ${new Date(preventivo.dataCreazione).toLocaleDateString('it-IT')}`, 150, 38);
+  doc.text(`N. ${preventivo.numeroPreventivo}`, pageWidth - margin - 40, 24);
+  doc.text(`Data: ${new Date(preventivo.dataCreazione).toLocaleDateString('it-IT')}`, pageWidth - margin - 40, 30);
   if (preventivo.dataScadenza) {
-    doc.text(`Scadenza: ${new Date(preventivo.dataScadenza).toLocaleDateString('it-IT')}`, 150, 44);
+    doc.text(`Scadenza: ${new Date(preventivo.dataScadenza).toLocaleDateString('it-IT')}`, pageWidth - margin - 40, 36);
   }
 
   // Reset colore testo
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
 
   // ===== SEZIONE CLIENTE =====
-  let yPos = 60;
-  doc.setFontSize(11);
+  let yPos = 52;
+
+  // Box cliente con bordo
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  const clienteStartY = yPos;
+
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('CLIENTE', 20, yPos);
+  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(margin, yPos, contentWidth, 6, 'F');
+  doc.text('CLIENTE', margin + 3, yPos + 4);
 
   yPos += 8;
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${preventivo.cliente.nome} ${preventivo.cliente.cognome}`, 20, yPos);
-  yPos += 5;
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+  doc.text(`${preventivo.cliente.nome} ${preventivo.cliente.cognome}`, margin + 3, yPos);
+  yPos += 4;
   if (preventivo.cliente.indirizzo) {
-    doc.text(preventivo.cliente.indirizzo, 20, yPos);
-    yPos += 5;
+    doc.text(preventivo.cliente.indirizzo, margin + 3, yPos);
+    yPos += 4;
   }
   if (preventivo.cliente.citta) {
-    doc.text(`${preventivo.cliente.cap || ''} ${preventivo.cliente.citta} ${preventivo.cliente.provincia ? '(' + preventivo.cliente.provincia + ')' : ''}`, 20, yPos);
-    yPos += 5;
+    doc.text(`${preventivo.cliente.cap || ''} ${preventivo.cliente.citta} ${preventivo.cliente.provincia ? '(' + preventivo.cliente.provincia + ')' : ''}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (preventivo.cliente.telefono) {
-    doc.text(`Tel: ${preventivo.cliente.telefono}`, 20, yPos);
-    yPos += 5;
+    doc.text(`Tel: ${preventivo.cliente.telefono}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (preventivo.cliente.email) {
-    doc.text(`Email: ${preventivo.cliente.email}`, 20, yPos);
-    yPos += 5;
+    doc.text(`Email: ${preventivo.cliente.email}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (preventivo.cliente.codiceFiscale) {
-    doc.text(`CF: ${preventivo.cliente.codiceFiscale}`, 20, yPos);
-    yPos += 5;
+    doc.text(`CF: ${preventivo.cliente.codiceFiscale}`, margin + 3, yPos);
+    yPos += 4;
   }
   if (preventivo.cliente.partitaIva) {
-    doc.text(`P.IVA: ${preventivo.cliente.partitaIva}`, 20, yPos);
-    yPos += 5;
+    doc.text(`P.IVA: ${preventivo.cliente.partitaIva}`, margin + 3, yPos);
+    yPos += 4;
   }
-  
+
+  // Disegna bordo cliente
+  const clienteHeight = yPos - clienteStartY + 2;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, clienteStartY, contentWidth, clienteHeight);
+
   // ===== TITOLO E DESCRIZIONE =====
   yPos += 8;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(preventivo.titolo, 20, yPos);
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+  doc.text(preventivo.titolo, margin, yPos);
 
   if (preventivo.descrizione) {
     yPos += 7;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    const descLines = doc.splitTextToSize(preventivo.descrizione, 170);
-    doc.text(descLines, 20, yPos);
+    const descLines = doc.splitTextToSize(preventivo.descrizione, contentWidth - 6);
+    doc.text(descLines, margin + 3, yPos);
     yPos += descLines.length * 4;
   }
 
@@ -177,17 +197,27 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
 
   // Intestazione tabella con sfondo colorato
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(20, yPos - 5, 170, 7, 'F');
+  doc.rect(margin, yPos - 5, contentWidth, 7, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('Descrizione', 22, yPos);
-  doc.text('Q.tà', 90, yPos);
-  doc.text('Prezzo Unit.', 110, yPos);
-  doc.text('Imponibile', 140, yPos);
-  doc.text('IVA', 165, yPos);
-  doc.text('Totale', 188, yPos, { align: 'right' });
+
+  const col = {
+    desc: margin + 2,
+    qty: margin + 75,
+    price: margin + 95,
+    taxable: margin + 120,
+    tax: margin + 150,
+    total: margin + contentWidth - 10
+  };
+
+  doc.text('Descrizione', col.desc, yPos);
+  doc.text('Q.tà', col.qty, yPos);
+  doc.text('Prezzo Unit.', col.price, yPos);
+  doc.text('Imponibile', col.taxable, yPos);
+  doc.text('IVA', col.tax, yPos);
+  doc.text('Totale', col.total, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   yPos += 8;
@@ -202,20 +232,20 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
     // Sfondo alternato per le righe
     if (rowCount % 2 === 0) {
       doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-      doc.rect(20, yPos - 4, 170, 6, 'F');
+      doc.rect(margin, yPos - 4, contentWidth, 6, 'F');
     }
 
     doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    const descLines = doc.splitTextToSize(voce.descrizione, 65);
-    doc.text(descLines, 22, yPos);
-    doc.text(voce.quantita.toString(), 90, yPos);
-    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, 110, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, 140, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, 165, yPos);
-    doc.text(`€ ${voce.totale.toFixed(2)}`, 188, yPos, { align: 'right' });
+    const descLines = doc.splitTextToSize(voce.descrizione, 70);
+    doc.text(descLines, col.desc, yPos);
+    doc.text(voce.quantita.toString(), col.qty, yPos);
+    doc.text(`€ ${voce.prezzoUnitario.toFixed(2)}`, col.price, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, col.taxable, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, col.tax, yPos);
+    doc.text(`€ ${voce.totale.toFixed(2)}`, col.total, yPos, { align: 'right' });
 
     yPos += Math.max(descLines.length * 4, 6);
     rowCount++;
@@ -231,10 +261,10 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   yPos += 2;
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
-  doc.line(20, yPos, 190, yPos);
+  doc.line(margin, yPos, margin + contentWidth, yPos);
   
   // ===== RIEPILOGO IVA =====
-  yPos += 8;
+  yPos += 10;
 
   // Raggruppa voci per aliquota IVA
   const vociPerIva = preventivo.voci.reduce((acc: any, voce) => {
@@ -252,14 +282,24 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
   let totaleImponibile = 0;
   let totaleIva = 0;
 
-  // Box riepilogo con bordo
-  const boxStartY = yPos;
-  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.setLineWidth(1);
+  // Box riepilogo IVA - larghezza intera
+  const riepilogoX = margin;
+  const riepilogoWidth = contentWidth;
+  const labelCol = riepilogoX + 2;
+  const valueCol = riepilogoX + riepilogoWidth - 30;
 
+  // Header riepilogo
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(riepilogoX, yPos - 5, riepilogoWidth, 6, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('RIEPILOGO IVA', labelCol, yPos - 1);
+
+  yPos += 6;
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8);
 
   // Mostra imponibile e IVA per ogni aliquota
   Object.keys(vociPerIva).sort((a, b) => Number(b) - Number(a)).forEach((aliquota) => {
@@ -267,53 +307,55 @@ export async function generatePreventivoPDF(preventivo: Preventivo, impostazioni
     totaleImponibile += imponibile;
     totaleIva += iva;
 
-    doc.text(`Imponibile ${aliquota}%:`, 130, yPos);
-    doc.text(`€ ${imponibile.toFixed(2)}`, 188, yPos, { align: 'right' });
-    yPos += 5;
-    doc.text(`IVA ${aliquota}%:`, 130, yPos);
-    doc.text(`€ ${iva.toFixed(2)}`, 188, yPos, { align: 'right' });
-    yPos += 5;
+    doc.text(`Imponibile ${aliquota}%:`, labelCol, yPos);
+    doc.text(`€ ${imponibile.toFixed(2)}`, valueCol, yPos, { align: 'right' });
+    yPos += 4;
+    doc.text(`IVA ${aliquota}%:`, labelCol, yPos);
+    doc.text(`€ ${iva.toFixed(2)}`, valueCol, yPos, { align: 'right' });
+    yPos += 4;
   });
 
   // Linea separatrice
   yPos += 2;
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
-  doc.line(130, yPos, 190, yPos);
+  doc.line(riepilogoX, yPos, riepilogoX + riepilogoWidth, yPos);
 
   // Totale finale con sfondo
   yPos += 6;
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(130, yPos - 5, 60, 8, 'F');
+  doc.rect(riepilogoX, yPos - 4, riepilogoWidth, 7, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('TOTALE:', 132, yPos);
-  doc.text(`€ ${preventivo.importoTotale.toFixed(2)}`, 188, yPos, { align: 'right' });
+  doc.text('TOTALE:', labelCol, yPos);
+  doc.text(`€ ${preventivo.importoTotale.toFixed(2)}`, valueCol, yPos, { align: 'right' });
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
 
   // ===== MODALITÀ PAGAMENTO =====
   yPos += 12;
-  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-  doc.rect(20, yPos - 5, 170, 1, 'F');
+
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos - 5, margin + contentWidth, yPos - 5);
 
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Modalità di Pagamento:', 20, yPos);
+  doc.text('Modalità di Pagamento:', margin, yPos);
   yPos += 5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(config.condizioniPagamento, 20, yPos);
+  doc.setFontSize(8);
+  doc.text(config.condizioniPagamento, margin, yPos);
   if (config.iban) {
     yPos += 4;
-    doc.text(`IBAN: ${config.iban}`, 20, yPos);
+    doc.text(`IBAN: ${config.iban}`, margin, yPos);
   }
   if (config.banca) {
     yPos += 4;
-    doc.text(`Banca: ${config.banca}`, 20, yPos);
+    doc.text(`Banca: ${config.banca}`, margin, yPos);
   }
 
   // ===== NOTE =====
