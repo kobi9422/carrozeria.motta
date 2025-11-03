@@ -625,13 +625,13 @@ export async function generateFatturaPDF(fattura: Fattura, impostazioni: Imposta
   });
 
   // Linea separatrice
-  yPos += 1;
+  yPos += 2;
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setLineWidth(0.5);
   doc.line(riepilogoX, yPos, riepilogoX + riepilogoWidth, yPos);
 
   // Totale finale con sfondo
-  yPos += 4;
+  yPos += 6;
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.rect(riepilogoX, yPos - 4, riepilogoWidth, 7, 'F');
 
